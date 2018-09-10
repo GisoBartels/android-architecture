@@ -30,13 +30,17 @@ import com.example.android.architecture.blueprints.todoapp.statistics.Statistics
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource
 import com.example.android.architecture.blueprints.todoapp.util.replaceFragmentInActivity
 import com.example.android.architecture.blueprints.todoapp.util.setupActionBar
+import kotlinx.serialization.json.JSON
 
 class TasksActivity : AppCompatActivity() {
 
-    private val CURRENT_FILTERING_KEY = "CURRENT_FILTERING_KEY"
+    companion object {
+        private const val SAVED_VIEW_STATE = "SAVED_VIEW_STATE"
+    }
 
     private lateinit var drawerLayout: DrawerLayout
 
+    private lateinit var tasksFragment: TasksFragment
     private lateinit var tasksPresenter: TasksPresenter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,25 +59,36 @@ class TasksActivity : AppCompatActivity() {
         }
         setupDrawerContent(findViewById(R.id.nav_view))
 
-        val tasksFragment = supportFragmentManager.findFragmentById(R.id.contentFrame)
+        tasksFragment = supportFragmentManager.findFragmentById(R.id.contentFrame)
                 as TasksFragment? ?: TasksFragment.newInstance().also {
             replaceFragmentInActivity(it, R.id.contentFrame)
         }
 
         // Create the presenter
-        tasksPresenter = TasksPresenter(Injection.provideTasksRepository(applicationContext),
-                tasksFragment).apply {
+        tasksPresenter = TasksPresenter(
+            Injection.provideTasksRepository(applicationContext),
+            Injection.provideNavigator(tasksFragment)
+        ).apply {
             // Load previously saved state, if available.
             if (savedInstanceState != null) {
-                currentFiltering = savedInstanceState.getSerializable(CURRENT_FILTERING_KEY)
-                        as TasksFilterType
+                viewState = JSON.parse(savedInstanceState.getString(SAVED_VIEW_STATE))
             }
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        tasksPresenter.attachView(tasksFragment)
+    }
+
+    override fun onPause() {
+        tasksPresenter.detachView()
+        super.onPause()
+    }
+
     public override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState.apply {
-            putSerializable(CURRENT_FILTERING_KEY, tasksPresenter.currentFiltering)
+            putString(SAVED_VIEW_STATE, JSON.stringify(tasksPresenter.viewState))
         })
     }
 

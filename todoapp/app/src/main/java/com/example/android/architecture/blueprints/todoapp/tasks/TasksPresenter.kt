@@ -15,42 +15,69 @@
  */
 package com.example.android.architecture.blueprints.todoapp.tasks
 
-import android.app.Activity
-import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity
+import com.example.android.architecture.blueprints.todoapp.Navigator
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
+import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.*
+import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource
-import java.util.ArrayList
+import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
+import wtf.mvi.MviPresenter
+import java.util.*
+import kotlin.properties.Delegates.observable
 
 /**
  * Listens to user actions from the UI ([TasksFragment]), retrieves the data and updates the
  * UI as required.
  */
-class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksContract.View)
-    : TasksContract.Presenter {
+class TasksPresenter(private val tasksRepository: TasksRepository, private val navigator: Navigator) :
+    MviPresenter<TasksView> {
 
-    override var currentFiltering = TasksFilterType.ALL_TASKS
+    override val intentActions = intentActions(
+        { filterTasksIntent.subscribe { filterTasks(it) } },
+        { refreshTasksIntent.subscribe { loadTasks(true) } },
+        { addNewTaskIntent.subscribe { navigator.navToAddTask() } },
+        { openTaskDetailsIntent.subscribe { navigator.navToTaskDetails(it.id) } },
+        { completeTaskIntent.subscribe { completeTask(it) } },
+        { activateTaskIntent.subscribe { activateTask(it) } },
+        { clearCompletedTasksIntent.subscribe { clearCompletedTasks() } },
+        { taskSuccessfullySavedIntent.subscribe { showMessage(SuccessfullySaved) }}
+    )
+
+    var viewState by observable(
+        TasksView.State(false, ShowNoTasks, emptyList(), TasksFilterType.ALL_TASKS, NoMessage)
+    ) { _, _, newValue ->
+        view?.render(newValue)
+    }
 
     private var firstLoad = true
 
-    init {
-        tasksView.presenter = this
-    }
+    private var view: TasksView? = null
 
-    override fun start() {
+    private var dismissMessageTimerJob: Job? = null
+
+    override fun attachView(view: TasksView) {
+        super.attachView(view)
+        this.view = view
+        view.render(viewState)
+
         loadTasks(false)
     }
 
-    override fun result(requestCode: Int, resultCode: Int) {
-        // If a task was successfully added, show snackbar
-        if (AddEditTaskActivity.REQUEST_ADD_TASK ==
-                requestCode && Activity.RESULT_OK == resultCode) {
-            tasksView.showSuccessfullySavedMessage()
-        }
+    override fun detachView() {
+        super.detachView()
+        this.view = null
     }
 
-    override fun loadTasks(forceUpdate: Boolean) {
+    private fun filterTasks(filterType: TasksFilterType) {
+        viewState = viewState.copy(activeFilter = filterType)
+        loadTasks(false)
+    }
+
+    private fun loadTasks(forceUpdate: Boolean) {
         // Simplification for sample: a network reload will be forced on first load.
         loadTasks(forceUpdate || firstLoad, true)
         firstLoad = false
@@ -63,7 +90,7 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
      */
     private fun loadTasks(forceUpdate: Boolean, showLoadingUI: Boolean) {
         if (showLoadingUI) {
-            tasksView.setLoadingIndicator(true)
+            viewState = viewState.copy(showLoadingIndicator = true)
         }
         if (forceUpdate) {
             tasksRepository.refreshTasks()
@@ -86,7 +113,7 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
 
                 // We filter the tasks based on the requestType
                 for (task in tasks) {
-                    when (currentFiltering) {
+                    when (viewState.activeFilter) {
                         TasksFilterType.ALL_TASKS -> tasksToShow.add(task)
                         TasksFilterType.ACTIVE_TASKS -> if (task.isActive) {
                             tasksToShow.add(task)
@@ -96,23 +123,15 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
                         }
                     }
                 }
-                // The view may not be able to handle UI updates anymore
-                if (!tasksView.isActive) {
-                    return
-                }
                 if (showLoadingUI) {
-                    tasksView.setLoadingIndicator(false)
+                    viewState = viewState.copy(showLoadingIndicator = false)
                 }
 
                 processTasks(tasksToShow)
             }
 
             override fun onDataNotAvailable() {
-                // The view may not be able to handle UI updates anymore
-                if (!tasksView.isActive) {
-                    return
-                }
-                tasksView.showLoadingTasksError()
+                viewState = viewState.copy(showMessage = LoadingTasksError)
             }
         })
     }
@@ -123,52 +142,46 @@ class TasksPresenter(val tasksRepository: TasksRepository, val tasksView: TasksC
             processEmptyTasks()
         } else {
             // Show the list of tasks
-            tasksView.showTasks(tasks)
-            // Set the filter label's text.
-            showFilterLabel()
-        }
-    }
-
-    private fun showFilterLabel() {
-        when (currentFiltering) {
-            TasksFilterType.ACTIVE_TASKS -> tasksView.showActiveFilterLabel()
-            TasksFilterType.COMPLETED_TASKS -> tasksView.showCompletedFilterLabel()
-            else -> tasksView.showAllFilterLabel()
+            viewState = viewState.copy(taskDisplay = ShowTasks, taskList = tasks)
         }
     }
 
     private fun processEmptyTasks() {
-        when (currentFiltering) {
-            TasksFilterType.ACTIVE_TASKS -> tasksView.showNoActiveTasks()
-            TasksFilterType.COMPLETED_TASKS -> tasksView.showNoCompletedTasks()
-            else -> tasksView.showNoTasks()
-        }
+        viewState = viewState.copy(
+            taskDisplay = when (viewState.activeFilter) {
+                TasksFilterType.ACTIVE_TASKS -> ShowNoActiveTasks
+                TasksFilterType.COMPLETED_TASKS -> ShowNoCompletedTasks
+                else -> ShowNoTasks
+            }
+        )
     }
 
-    override fun addNewTask() {
-        tasksView.showAddTask()
-    }
-
-    override fun openTaskDetails(requestedTask: Task) {
-        tasksView.showTaskDetailsUi(requestedTask.id)
-    }
-
-    override fun completeTask(completedTask: Task) {
+    private fun completeTask(completedTask: Task) {
         tasksRepository.completeTask(completedTask)
-        tasksView.showTaskMarkedComplete()
         loadTasks(false, false)
+        showMessage(TaskMarkedCompleted)
     }
 
-    override fun activateTask(activeTask: Task) {
+    private fun activateTask(activeTask: Task) {
         tasksRepository.activateTask(activeTask)
-        tasksView.showTaskMarkedActive()
         loadTasks(false, false)
+        showMessage(TaskMarkedActive)
     }
 
-    override fun clearCompletedTasks() {
+    private fun clearCompletedTasks() {
         tasksRepository.clearCompletedTasks()
-        tasksView.showCompletedTasksCleared()
         loadTasks(false, false)
+        showMessage(CompletedTasksCleared)
+    }
+
+    private fun showMessage(message: TasksView.TasksMessage) {
+        dismissMessageTimerJob?.cancel()
+        viewState = viewState.copy(showMessage = message)
+        dismissMessageTimerJob = launch {
+            delay(2750)
+            viewState = viewState.copy(showMessage = NoMessage)
+            dismissMessageTimerJob = null
+        }
     }
 
 }

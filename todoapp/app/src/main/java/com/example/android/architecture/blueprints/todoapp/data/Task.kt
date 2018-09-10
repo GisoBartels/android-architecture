@@ -18,6 +18,8 @@ package com.example.android.architecture.blueprints.todoapp.data
 import android.arch.persistence.room.ColumnInfo
 import android.arch.persistence.room.Entity
 import android.arch.persistence.room.PrimaryKey
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.util.UUID
 
 /**
@@ -28,6 +30,7 @@ import java.util.UUID
  * @param id          id of the task
  */
 @Entity(tableName = "tasks")
+@Serializable
 data class Task @JvmOverloads constructor(
         @ColumnInfo(name = "title") var title: String = "",
         @ColumnInfo(name = "description") var description: String = "",
@@ -39,12 +42,15 @@ data class Task @JvmOverloads constructor(
      */
     @ColumnInfo(name = "completed") var isCompleted = false
 
+    @Transient
     val titleForList: String
         get() = if (title.isNotEmpty()) title else description
 
+    @Transient
     val isActive
         get() = !isCompleted
 
+    @Transient
     val isEmpty
         get() = title.isEmpty() && description.isEmpty()
 }

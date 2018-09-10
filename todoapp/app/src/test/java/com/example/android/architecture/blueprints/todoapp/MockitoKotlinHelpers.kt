@@ -20,6 +20,7 @@ package com.example.android.architecture.blueprints.todoapp
  */
 
 import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 
 /**
@@ -37,6 +38,7 @@ fun <T> eq(obj: T): T = Mockito.eq<T>(obj)
  */
 fun <T> any(): T = Mockito.any<T>()
 
+fun <T> argThat(argument: T.() -> Boolean) : T = ArgumentMatchers.argThat<T> { argument(it) }
 
 /**
  * Returns ArgumentCaptor.capture() as nullable type to avoid java.lang.IllegalStateException
@@ -49,4 +51,4 @@ fun <T> capture(argumentCaptor: ArgumentCaptor<T>): T = argumentCaptor.capture()
  * Helper function for creating an argumentCaptor in kotlin.
  */
 inline fun <reified T : Any> argumentCaptor(): ArgumentCaptor<T> =
-        ArgumentCaptor.forClass(T::class.java)
+    ArgumentCaptor.forClass(T::class.java)

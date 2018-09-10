@@ -16,12 +16,16 @@
 package com.example.android.architecture.blueprints.todoapp
 
 import android.content.Context
+import android.content.Intent
+import android.support.v4.app.Fragment
+import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity
 
 import com.example.android.architecture.blueprints.todoapp.data.FakeTasksRemoteDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.data.source.local.TasksLocalDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.local.ToDoDatabase
+import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailActivity
 import com.example.android.architecture.blueprints.todoapp.util.AppExecutors
 
 /**
@@ -32,7 +36,25 @@ import com.example.android.architecture.blueprints.todoapp.util.AppExecutors
 object Injection {
     fun provideTasksRepository(context: Context): TasksRepository {
         val database = ToDoDatabase.getInstance(context)
-        return TasksRepository.getInstance(FakeTasksRemoteDataSource.getInstance(),
-                TasksLocalDataSource.getInstance(AppExecutors(), database.taskDao()))
+        return TasksRepository.getInstance(
+            FakeTasksRemoteDataSource.getInstance(),
+            TasksLocalDataSource.getInstance(AppExecutors(), database.taskDao())
+        )
+    }
+
+    fun provideNavigator(fragment: Fragment) = object : Navigator {
+        override fun navToAddTask() {
+            fragment.startActivityForResult(
+                Intent(fragment.context, AddEditTaskActivity::class.java),
+                AddEditTaskActivity.REQUEST_ADD_TASK
+            )
+        }
+
+        override fun navToTaskDetails(taskId: String) {
+            fragment.startActivity(
+                Intent(fragment.context, TaskDetailActivity::class.java)
+                    .putExtra(TaskDetailActivity.EXTRA_TASK_ID, taskId)
+            )
+        }
     }
 }
