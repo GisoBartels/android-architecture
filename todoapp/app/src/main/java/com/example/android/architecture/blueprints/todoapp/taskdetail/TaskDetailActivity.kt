@@ -27,6 +27,9 @@ import com.example.android.architecture.blueprints.todoapp.util.setupActionBar
  */
 class TaskDetailActivity : AppCompatActivity() {
 
+    lateinit var presenter: TaskDetailPresenter
+    lateinit var fragment: TaskDetailFragment
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -41,14 +44,25 @@ class TaskDetailActivity : AppCompatActivity() {
         // Get the requested task id
         val taskId = intent.getStringExtra(EXTRA_TASK_ID)
 
-        val taskDetailFragment = supportFragmentManager
-                .findFragmentById(R.id.contentFrame) as TaskDetailFragment? ?:
+        fragment = supportFragmentManager.findFragmentById(R.id.contentFrame) as TaskDetailFragment? ?:
                 TaskDetailFragment.newInstance(taskId).also {
                     replaceFragmentInActivity(it, R.id.contentFrame)
                 }
+
         // Create the presenter
-        TaskDetailPresenter(taskId, Injection.provideTasksRepository(applicationContext),
-                taskDetailFragment)
+        presenter = TaskDetailPresenter(
+            taskId, Injection.provideTasksRepository(applicationContext), Injection.provideNavigator(fragment)
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        presenter.attachView(fragment)
+    }
+
+    override fun onPause() {
+        presenter.detachView()
+        super.onPause()
     }
 
     override fun onSupportNavigateUp(): Boolean {

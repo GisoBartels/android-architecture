@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import android.support.v4.app.Fragment
 import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity
+import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskFragment
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.data.source.local.TasksLocalDataSource
@@ -49,11 +50,23 @@ object Injection {
             )
         }
 
+        override fun navToEditTask(taskId: String) {
+            fragment.startActivityForResult(
+                Intent(fragment.context, AddEditTaskActivity::class.java)
+                    .putExtra(AddEditTaskFragment.ARGUMENT_EDIT_TASK_ID, taskId),
+                AddEditTaskActivity.REQUEST_EDIT_TASK
+            )
+        }
+
         override fun navToTaskDetails(taskId: String) {
             fragment.startActivity(
                 Intent(fragment.context, TaskDetailActivity::class.java)
                     .putExtra(TaskDetailActivity.EXTRA_TASK_ID, taskId)
             )
+        }
+
+        override fun goBack() {
+            fragment.activity?.finish()
         }
     }
 }

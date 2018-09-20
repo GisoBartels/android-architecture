@@ -18,45 +18,39 @@ package com.example.android.architecture.blueprints.todoapp.taskdetail
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.support.annotation.StringRes
 import android.support.design.widget.FloatingActionButton
 import android.support.design.widget.Snackbar
 import android.support.v4.app.Fragment
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.CheckBox
 import android.widget.TextView
 import com.example.android.architecture.blueprints.todoapp.R
 import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity
-import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskFragment
-import com.example.android.architecture.blueprints.todoapp.util.showSnackBar
+import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.*
+import wtf.mvi.MviIntent
+import wtf.mvi.post
 
 /**
  * Main UI for the task detail screen.
  */
-class TaskDetailFragment : Fragment(), TaskDetailContract.View {
+class TaskDetailFragment : Fragment(), TaskDetailsView {
+
+    override val editTaskIntent = MviIntent<Unit>()
+    override val deleteTaskIntent = MviIntent<Unit>()
+    override val completeTaskIntent = MviIntent<Unit>()
+    override val activateTaskIntent = MviIntent<Unit>()
 
     private lateinit var detailTitle: TextView
     private lateinit var detailDescription: TextView
     private lateinit var detailCompleteStatus: CheckBox
-    
-    override lateinit var presenter: TaskDetailContract.Presenter
 
-    override var isActive: Boolean = false
-        get() = isAdded
-
-    override fun onResume() {
-        super.onResume()
-        presenter.start()
-    }
+    private var snackbar: Snackbar? = null
 
     override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View? {
         val root = inflater.inflate(R.layout.taskdetail_frag, container, false)
         setHasOptionsMenu(true)
@@ -66,9 +60,17 @@ class TaskDetailFragment : Fragment(), TaskDetailContract.View {
             detailCompleteStatus = findViewById(R.id.task_detail_complete)
         }
 
+        detailCompleteStatus.setOnClickListener {
+            if (detailCompleteStatus.isChecked) {
+                completeTaskIntent.post()
+            } else {
+                activateTaskIntent.post()
+            }
+        }
+
         // Set up floating action button
         activity?.findViewById<FloatingActionButton>(R.id.fab_edit_task)?.setOnClickListener {
-            presenter.editTask()
+            editTaskIntent.post()
         }
 
         return root
@@ -76,7 +78,7 @@ class TaskDetailFragment : Fragment(), TaskDetailContract.View {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         val deletePressed = item.itemId == R.id.menu_delete
-        if (deletePressed) presenter.deleteTask()
+        if (deletePressed) deleteTaskIntent.post()
         return deletePressed
     }
 
@@ -84,61 +86,34 @@ class TaskDetailFragment : Fragment(), TaskDetailContract.View {
         inflater.inflate(R.menu.taskdetail_fragment_menu, menu)
     }
 
-    override fun setLoadingIndicator(active: Boolean) {
-        if (active) {
-            detailTitle.text = ""
-            detailDescription.text = getString(R.string.loading)
+
+    override fun render(viewState: TaskDetailsView.State) {
+        detailTitle.text = viewState.title
+        detailDescription.text = when {
+            viewState.showLoadingIndicator -> getString(R.string.loading)
+            viewState.taskMissing -> getString(R.string.no_data)
+            else -> viewState.description
         }
+        detailCompleteStatus.isChecked = viewState.completionStatus
+
+        if (viewState.showMessage == NoMessage)
+            snackbar?.dismiss()
+        else
+            snackbar = viewState.showMessage.show()
     }
 
-    override fun hideDescription() {
-        detailDescription.visibility = View.GONE
-    }
+    private fun TaskDetailsView.TaskDetailMessage.show() =
+        view?.let { view -> Snackbar.make(view, textRes(), Snackbar.LENGTH_INDEFINITE).also { it.show() } }
 
-    override fun hideTitle() {
-        detailTitle.visibility = View.GONE
-    }
-
-    override fun showDescription(description: String) {
-        with(detailDescription) {
-            visibility = View.VISIBLE
-            text = description
-        }
-    }
-
-    override fun showCompletionStatus(complete: Boolean) {
-        with(detailCompleteStatus) {
-            isChecked = complete
-            setOnCheckedChangeListener { _, isChecked ->
-                if (isChecked) {
-                    presenter.completeTask()
-                } else {
-                    presenter.activateTask()
-                }
-            }
-        }
-    }
-
-    override fun showEditTask(taskId: String) {
-        val intent = Intent(context, AddEditTaskActivity::class.java)
-        intent.putExtra(AddEditTaskFragment.ARGUMENT_EDIT_TASK_ID, taskId)
-        startActivityForResult(intent, REQUEST_EDIT_TASK)
-    }
-
-    override fun showTaskDeleted() {
-        activity?.finish()
-    }
-
-    override fun showTaskMarkedComplete() {
-        view?.showSnackBar(getString(R.string.task_marked_complete), Snackbar.LENGTH_LONG)
-    }
-
-    override fun showTaskMarkedActive() {
-        view?.showSnackBar(getString(R.string.task_marked_active), Snackbar.LENGTH_LONG)
+    @StringRes
+    private fun TaskDetailsView.TaskDetailMessage.textRes() = when (this) {
+        NoMessage -> 0
+        TaskMarkedCompleted -> R.string.task_marked_complete
+        TaskMarkedActive -> R.string.task_marked_active
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == REQUEST_EDIT_TASK) {
+        if (requestCode == AddEditTaskActivity.REQUEST_EDIT_TASK) {
             // If the task was edited successfully, go back to the list.
             if (resultCode == Activity.RESULT_OK) {
                 activity?.finish()
@@ -146,28 +121,13 @@ class TaskDetailFragment : Fragment(), TaskDetailContract.View {
         }
     }
 
-    override fun showTitle(title: String) {
-        with(detailTitle) {
-            visibility = View.VISIBLE
-            text = title
-        }
-    }
-
-    override fun showMissingTask() {
-        detailTitle.text = ""
-        detailDescription.text = getString(R.string.no_data)
-    }
-
     companion object {
-
-        private val ARGUMENT_TASK_ID = "TASK_ID"
-
-        private val REQUEST_EDIT_TASK = 1
+        private const val ARGUMENT_TASK_ID = "TASK_ID"
 
         fun newInstance(taskId: String?) =
-                TaskDetailFragment().apply {
-                    arguments = Bundle().apply { putString(ARGUMENT_TASK_ID, taskId) }
-                }
+            TaskDetailFragment().apply {
+                arguments = Bundle().apply { putString(ARGUMENT_TASK_ID, taskId) }
+            }
     }
 
 }
