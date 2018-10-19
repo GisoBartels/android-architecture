@@ -19,8 +19,9 @@ import android.os.Handler
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.google.common.collect.Lists
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Implementation of the data source that adds a latency simulating network.
@@ -49,7 +50,7 @@ object TasksRemoteDataSource : TasksDataSource {
     override fun getTasks(callback: TasksDataSource.LoadTasksCallback) {
         // Simulate network by delaying the execution.
         val tasks = Lists.newArrayList(TASKS_SERVICE_DATA.values)
-        launch {
+        GlobalScope.launch {
             delay(SERVICE_LATENCY_IN_MILLIS)
             callback.onTasksLoaded(tasks)
         }

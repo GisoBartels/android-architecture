@@ -24,7 +24,7 @@ import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepo
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.ShowTasks
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
 import com.google.common.collect.Lists
-import kotlinx.coroutines.experimental.Unconfined
+import kotlinx.coroutines.Dispatchers
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
@@ -59,7 +59,7 @@ class TasksPresenterTest {
         MockitoAnnotations.initMocks(this)
 
         // Get a reference to the class under test
-        tasksPresenter = TasksPresenter(tasksRepository, navigator)
+        tasksPresenter = TasksPresenter(tasksRepository, navigator, Dispatchers.Unconfined)
 
         // We start the tasks to 3, with one active and two completed
         tasks = Lists.newArrayList(Task("Title1", "Description1"),
@@ -186,8 +186,8 @@ class TasksPresenterTest {
         configureTasksRepository(listOf(task))
         tasksPresenter.attachView(tasksView)
 
-            // When task is marked as activated
-            tasksView.activateTaskIntent.post(task)
+        // When task is marked as activated
+        tasksView.activateTaskIntent.post(task)
 
         // Then repository is called and task marked active UI is shown
         verify(tasksRepository).activateTask(task)
@@ -207,14 +207,14 @@ class TasksPresenterTest {
     }
 
     abstract class FakeTasksView : TasksView {
-        override val filterTasksIntent = MviIntent<TasksFilterType>(Unconfined)
-        override val refreshTasksIntent = MviIntent<Unit>(Unconfined)
-        override val addNewTaskIntent = MviIntent<Unit>(Unconfined)
-        override val openTaskDetailsIntent = MviIntent<Task>(Unconfined)
-        override val completeTaskIntent = MviIntent<Task>(Unconfined)
-        override val activateTaskIntent = MviIntent<Task>(Unconfined)
-        override val clearCompletedTasksIntent = MviIntent<Unit>(Unconfined)
-        override val taskSuccessfullySavedIntent = MviIntent<Unit>(Unconfined)
+        override val filterTasksIntent = MviIntent<TasksFilterType>(Dispatchers.Unconfined)
+        override val refreshTasksIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val addNewTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val openTaskDetailsIntent = MviIntent<Task>(Dispatchers.Unconfined)
+        override val completeTaskIntent = MviIntent<Task>(Dispatchers.Unconfined)
+        override val activateTaskIntent = MviIntent<Task>(Dispatchers.Unconfined)
+        override val clearCompletedTasksIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val taskSuccessfullySavedIntent = MviIntent<Unit>(Dispatchers.Unconfined)
     }
 
 }

@@ -62,14 +62,12 @@ android {
     }
 }
 
-kotlin { experimental { coroutines 'enable' } }
-
 /*
  Dependency versions are defined in the top level build.gradle file. This helps keeping track of
  all versions in a single place. This improves readability and helps managing project complexity.
  */
 dependencies {
-    implementation "wtf.mvi:core:0.1"
+    implementation "wtf.mvi:core:0.2"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:$kotlinxSerializationVersion"

@@ -22,19 +22,24 @@ import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepo
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.*
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import wtf.mvi.MviPresenter
 import java.util.*
+import kotlin.coroutines.CoroutineContext
 import kotlin.properties.Delegates.observable
 
 /**
  * Listens to user actions from the UI ([TasksFragment]), retrieves the data and updates the
  * UI as required.
  */
-class TasksPresenter(private val tasksRepository: TasksRepository, private val navigator: Navigator) :
-    MviPresenter<TasksView> {
+class TasksPresenter(
+    private val tasksRepository: TasksRepository,
+    private val navigator: Navigator,
+    override val coroutineContext: CoroutineContext
+) : MviPresenter<TasksView>, CoroutineScope {
 
     override val intentActions = intentActions(
         { filterTasksIntent.subscribe { filterTasks(it) } },
@@ -44,13 +49,13 @@ class TasksPresenter(private val tasksRepository: TasksRepository, private val n
         { completeTaskIntent.subscribe { completeTask(it) } },
         { activateTaskIntent.subscribe { activateTask(it) } },
         { clearCompletedTasksIntent.subscribe { clearCompletedTasks() } },
-        { taskSuccessfullySavedIntent.subscribe { showMessage(SuccessfullySaved) }}
+        { taskSuccessfullySavedIntent.subscribe { showMessage(SuccessfullySaved) } }
     )
 
     var viewState by observable(
         TasksView.State(false, ShowNoTasks, emptyList(), TasksFilterType.ALL_TASKS, NoMessage)
     ) { _, _, newValue ->
-        view?.render(newValue)
+        launch { view?.render(newValue) }
     }
 
     private var firstLoad = true
@@ -62,7 +67,7 @@ class TasksPresenter(private val tasksRepository: TasksRepository, private val n
     override fun attachView(view: TasksView) {
         super.attachView(view)
         this.view = view
-        view.render(viewState)
+        launch { view.render(viewState) }
 
         loadTasks(false)
     }

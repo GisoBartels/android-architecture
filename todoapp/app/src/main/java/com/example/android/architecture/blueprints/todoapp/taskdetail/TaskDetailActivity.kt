@@ -21,6 +21,7 @@ import com.example.android.architecture.blueprints.todoapp.Injection
 import com.example.android.architecture.blueprints.todoapp.R
 import com.example.android.architecture.blueprints.todoapp.util.replaceFragmentInActivity
 import com.example.android.architecture.blueprints.todoapp.util.setupActionBar
+import kotlinx.coroutines.Dispatchers
 
 /**
  * Displays task details screen.
@@ -51,7 +52,10 @@ class TaskDetailActivity : AppCompatActivity() {
 
         // Create the presenter
         presenter = TaskDetailPresenter(
-            taskId, Injection.provideTasksRepository(applicationContext), Injection.provideNavigator(fragment)
+            taskId,
+            Injection.provideTasksRepository(applicationContext),
+            Injection.provideNavigator(fragment),
+            Dispatchers.Main
         )
     }
 

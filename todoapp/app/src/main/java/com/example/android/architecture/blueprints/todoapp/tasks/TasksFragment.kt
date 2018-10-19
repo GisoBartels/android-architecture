@@ -33,8 +33,6 @@ import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTa
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.*
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.launch
 import wtf.mvi.MviIntent
 import wtf.mvi.post
 import java.util.*
@@ -85,7 +83,8 @@ class TasksFragment : Fragment(), TasksView {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (AddEditTaskActivity.REQUEST_ADD_TASK == requestCode && Activity.RESULT_OK == resultCode) {
-            Handler().post { // post intent, when view is attached
+            Handler().post {
+                // post intent, when view is attached
                 taskSuccessfullySavedIntent.post()
             }
         }
@@ -167,32 +166,30 @@ class TasksFragment : Fragment(), TasksView {
     }
 
     override fun render(viewState: TasksView.State) {
-        launch(UI) {
-            with(viewState) {
-                setLoadingIndicator(showLoadingIndicator)
+        with(viewState) {
+            setLoadingIndicator(showLoadingIndicator)
 
-                when (taskDisplay) {
-                    ShowTasks -> showTasks(taskList)
-                    ShowNoActiveTasks -> showNoActiveTasks()
-                    ShowNoTasks -> showNoTasks()
-                    ShowNoCompletedTasks -> showNoCompletedTasks()
+            when (taskDisplay) {
+                ShowTasks -> showTasks(taskList)
+                ShowNoActiveTasks -> showNoActiveTasks()
+                ShowNoTasks -> showNoTasks()
+                ShowNoCompletedTasks -> showNoCompletedTasks()
+            }
+
+            filteringLabelView.text = resources.getString(
+                when (activeFilter) {
+                    TasksFilterType.ACTIVE_TASKS -> R.string.label_active
+                    TasksFilterType.COMPLETED_TASKS -> R.string.label_completed
+                    TasksFilterType.ALL_TASKS -> R.string.label_all
                 }
+            )
 
-                filteringLabelView.text = resources.getString(
-                    when (activeFilter) {
-                        TasksFilterType.ACTIVE_TASKS -> R.string.label_active
-                        TasksFilterType.COMPLETED_TASKS -> R.string.label_completed
-                        TasksFilterType.ALL_TASKS -> R.string.label_all
-                    }
-                )
-
-                if (currentMessage != showMessage) {
-                    currentMessage = showMessage
-                    if (showMessage == NoMessage)
-                        snackbar?.dismiss()
-                    else
-                        snackbar = showMessage.show()
-                }
+            if (currentMessage != showMessage) {
+                currentMessage = showMessage
+                if (showMessage == NoMessage)
+                    snackbar?.dismiss()
+                else
+                    snackbar = showMessage.show()
             }
         }
     }

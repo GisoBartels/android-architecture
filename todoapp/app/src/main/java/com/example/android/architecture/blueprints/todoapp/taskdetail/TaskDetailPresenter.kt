@@ -20,10 +20,12 @@ import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.*
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import wtf.mvi.MviPresenter
+import kotlin.coroutines.CoroutineContext
 import kotlin.properties.Delegates
 
 /**
@@ -33,8 +35,9 @@ import kotlin.properties.Delegates
 class TaskDetailPresenter(
     private val taskId: String,
     private val tasksRepository: TasksRepository,
-    private val navigator: Navigator
-) : MviPresenter<TaskDetailsView> {
+    private val navigator: Navigator,
+    override val coroutineContext: CoroutineContext
+) : MviPresenter<TaskDetailsView>, CoroutineScope {
 
     override val intentActions = intentActions(
         { editTaskIntent.subscribe { editTask() } },

@@ -30,6 +30,7 @@ import com.example.android.architecture.blueprints.todoapp.statistics.Statistics
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource
 import com.example.android.architecture.blueprints.todoapp.util.replaceFragmentInActivity
 import com.example.android.architecture.blueprints.todoapp.util.setupActionBar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JSON
 
 class TasksActivity : AppCompatActivity() {
@@ -67,7 +68,8 @@ class TasksActivity : AppCompatActivity() {
         // Create the presenter
         tasksPresenter = TasksPresenter(
             Injection.provideTasksRepository(applicationContext),
-            Injection.provideNavigator(tasksFragment)
+            Injection.provideNavigator(tasksFragment),
+            Dispatchers.Main
         ).apply {
             // Load previously saved state, if available.
             if (savedInstanceState != null) {

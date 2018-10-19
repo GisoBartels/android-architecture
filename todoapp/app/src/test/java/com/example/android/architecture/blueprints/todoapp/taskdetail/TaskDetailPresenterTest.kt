@@ -24,7 +24,7 @@ import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepo
 import com.example.android.architecture.blueprints.todoapp.eq
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.TaskMarkedActive
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.TaskMarkedCompleted
-import kotlinx.coroutines.experimental.Unconfined
+import kotlinx.coroutines.Dispatchers
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.ArgumentCaptor
@@ -74,7 +74,7 @@ class TaskDetailPresenterTest {
     @Test
     fun getActiveTaskFromRepositoryAndLoadIntoView() {
         // When tasks presenter is asked to open a task
-        taskDetailPresenter = TaskDetailPresenter(activeTask.id, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(activeTask.id, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // Then task is loaded from model, callback is captured and progress indicator is shown
@@ -96,7 +96,7 @@ class TaskDetailPresenterTest {
 
     @Test
     fun getCompletedTaskFromRepositoryAndLoadIntoView() {
-        taskDetailPresenter = TaskDetailPresenter(completedTask.id, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(completedTask.id, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // Then task is loaded from model, callback is captured and progress indicator is shown
@@ -119,7 +119,7 @@ class TaskDetailPresenterTest {
     @Test
     fun getUnknownTaskFromRepositoryAndLoadIntoView() {
         // When loading of a task is requested with an invalid task ID.
-        taskDetailPresenter = TaskDetailPresenter(invalidTaskId, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(invalidTaskId, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         verify(taskDetailView).render(argThat { taskMissing == true })
@@ -129,7 +129,7 @@ class TaskDetailPresenterTest {
     fun deleteTask() {
         // Given an initialized TaskDetailPresenter with stubbed task
         val task = Task(TITLE_TEST, DESCRIPTION_TEST)
-        taskDetailPresenter = TaskDetailPresenter(task.id, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(task.id, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // When the deletion of a task is requested
@@ -144,7 +144,7 @@ class TaskDetailPresenterTest {
     fun completeTask() {
         // Given an initialized presenter with an active task
         val task = Task(TITLE_TEST, DESCRIPTION_TEST)
-        taskDetailPresenter = TaskDetailPresenter(task.id, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(task.id, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // When a task gets completed
@@ -159,7 +159,7 @@ class TaskDetailPresenterTest {
     fun activateTask() {
         // Given an initialized presenter with a completed task
         val task = Task(TITLE_TEST, DESCRIPTION_TEST).apply { isCompleted = true }
-        taskDetailPresenter = TaskDetailPresenter(task.id, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(task.id, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // When a task gets activated
@@ -173,7 +173,7 @@ class TaskDetailPresenterTest {
     @Test
     fun activeTaskIsShownWhenEditing() {
         // Given an initialized presenter with an active task
-        taskDetailPresenter = TaskDetailPresenter(activeTask.id, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(activeTask.id, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // When the edit of an activeTask is requested
@@ -186,7 +186,7 @@ class TaskDetailPresenterTest {
     @Test
     fun invalidTaskIsNotShownWhenEditing() {
         // Given an initialized presenter with an invalid task
-        taskDetailPresenter = TaskDetailPresenter(invalidTaskId, tasksRepository, navigator)
+        taskDetailPresenter = TaskDetailPresenter(invalidTaskId, tasksRepository, navigator, Dispatchers.Unconfined)
         taskDetailPresenter.attachView(taskDetailView)
 
         // When the edit of an invalid task id is requested
@@ -199,9 +199,9 @@ class TaskDetailPresenterTest {
     }
 
     abstract class FakeTaskDetailsView : TaskDetailsView {
-        override val editTaskIntent = MviIntent<Unit>(Unconfined)
-        override val deleteTaskIntent = MviIntent<Unit>(Unconfined)
-        override val completeTaskIntent = MviIntent<Unit>(Unconfined)
-        override val activateTaskIntent = MviIntent<Unit>(Unconfined)
+        override val editTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val deleteTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val completeTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val activateTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
     }
 }
