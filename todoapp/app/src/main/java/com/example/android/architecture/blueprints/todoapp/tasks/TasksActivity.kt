@@ -73,7 +73,7 @@ class TasksActivity : AppCompatActivity() {
         ).apply {
             // Load previously saved state, if available.
             if (savedInstanceState != null) {
-                viewState = JSON.parse(savedInstanceState.getString(SAVED_VIEW_STATE))
+                viewState = JSON.parse(TasksView.State.serializer(), savedInstanceState.getString(SAVED_VIEW_STATE)!!)
             }
         }
     }
@@ -90,7 +90,7 @@ class TasksActivity : AppCompatActivity() {
 
     public override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState.apply {
-            putString(SAVED_VIEW_STATE, JSON.stringify(tasksPresenter.viewState))
+            putString(SAVED_VIEW_STATE, JSON.stringify(TasksView.State.serializer(), tasksPresenter.viewState))
         })
     }
 
