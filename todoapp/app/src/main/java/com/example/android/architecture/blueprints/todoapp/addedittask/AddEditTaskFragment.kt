@@ -16,7 +16,6 @@
 
 package com.example.android.architecture.blueprints.todoapp.addedittask
 
-import android.app.Activity
 import android.os.Bundle
 import android.support.design.widget.FloatingActionButton
 import android.support.design.widget.Snackbar
@@ -26,38 +25,49 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.example.android.architecture.blueprints.todoapp.R
-import com.example.android.architecture.blueprints.todoapp.util.showSnackBar
+import wtf.mvi.android.clickIntent
+import wtf.mvi.android.textChangeIntent
 
 /**
  * Main UI for the add task screen. Users can enter a task title and description.
  */
-class AddEditTaskFragment : Fragment(), AddEditTaskContract.View {
+class AddEditTaskFragment : Fragment(), AddEditTaskView {
 
-    override lateinit var presenter: AddEditTaskContract.Presenter
-    override var isActive = false
-        get() = isAdded
+    override val titleChangedIntent by lazy { title.textChangeIntent() }
+    override val descriptionChangedIntent by lazy { description.textChangeIntent() }
+    override val saveTaskIntent by lazy { saveButton.clickIntent() }
 
     private lateinit var title: TextView
     private lateinit var description: TextView
+    private lateinit var saveButton: FloatingActionButton
 
+    private var snackbar: Snackbar? = null
 
-    override fun onResume() {
-        super.onResume()
-        presenter.start()
+    override fun render(viewState: AddEditTaskView.State) {
+        if (viewState.showEmptyTaskError)
+            showEmptyTaskError()
+        else
+            hideEmptyTaskError()
+
+        title.setTextIfDifferent(viewState.title)
+        description.setTextIfDifferent(viewState.description)
+    }
+
+    private fun TextView.setTextIfDifferent(text: String) {
+        if (this.text.toString() != text)
+            this.text = text
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        activity?.findViewById<FloatingActionButton>(R.id.fab_edit_task_done)?.apply {
-            setImageResource(R.drawable.ic_done)
-            setOnClickListener {
-                presenter.saveTask(title.text.toString(), description.text.toString())
-            }
-        }
+        saveButton = activity!!.findViewById<FloatingActionButton>(R.id.fab_edit_task_done)
+            .apply { setImageResource(R.drawable.ic_done) }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-            savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         val root = inflater.inflate(R.layout.addtask_frag, container, false)
         with(root) {
             title = findViewById(R.id.add_task_title)
@@ -67,33 +77,25 @@ class AddEditTaskFragment : Fragment(), AddEditTaskContract.View {
         return root
     }
 
-    override fun showEmptyTaskError() {
-        title.showSnackBar(getString(R.string.empty_task_message), Snackbar.LENGTH_LONG)
+    private fun showEmptyTaskError() {
+        if (snackbar == null)
+            snackbar = Snackbar.make(title, getString(R.string.empty_task_message), Snackbar.LENGTH_INDEFINITE)
+                .also { it.show() }
     }
 
-    override fun showTasksList() {
-        activity?.apply {
-            setResult(Activity.RESULT_OK)
-            finish()
-        }
-    }
-
-    override fun setTitle(title: String) {
-        this.title.text = title
-    }
-
-    override fun setDescription(description: String) {
-        this.description.text = description
+    private fun hideEmptyTaskError() {
+        snackbar?.dismiss()
+        snackbar = null
     }
 
     companion object {
         const val ARGUMENT_EDIT_TASK_ID = "EDIT_TASK_ID"
 
         fun newInstance(taskId: String?) =
-                AddEditTaskFragment().apply {
-                    arguments = Bundle().apply {
-                        putString(AddEditTaskFragment.ARGUMENT_EDIT_TASK_ID, taskId)
-                    }
+            AddEditTaskFragment().apply {
+                arguments = Bundle().apply {
+                    putString(AddEditTaskFragment.ARGUMENT_EDIT_TASK_ID, taskId)
                 }
+            }
     }
 }

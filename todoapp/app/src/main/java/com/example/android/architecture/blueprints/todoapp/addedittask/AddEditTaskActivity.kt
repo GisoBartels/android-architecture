@@ -22,6 +22,8 @@ import com.example.android.architecture.blueprints.todoapp.Injection
 import com.example.android.architecture.blueprints.todoapp.R
 import com.example.android.architecture.blueprints.todoapp.util.replaceFragmentInActivity
 import com.example.android.architecture.blueprints.todoapp.util.setupActionBar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.JSON
 
 /**
  * Displays an add or edit task screen.
@@ -29,6 +31,7 @@ import com.example.android.architecture.blueprints.todoapp.util.setupActionBar
 class AddEditTaskActivity : AppCompatActivity() {
 
     private lateinit var addEditTaskPresenter: AddEditTaskPresenter
+    private lateinit var addEditTaskFragment: AddEditTaskFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,28 +45,42 @@ class AddEditTaskActivity : AppCompatActivity() {
             setTitle(if (taskId == null) R.string.add_task else R.string.edit_task)
         }
 
-        val addEditTaskFragment =
-                supportFragmentManager.findFragmentById(R.id.contentFrame) as AddEditTaskFragment?
-                        ?: AddEditTaskFragment.newInstance(taskId).also {
-                    replaceFragmentInActivity(it, R.id.contentFrame)
-                }
-
-        val shouldLoadDataFromRepo =
-                // Prevent the presenter from loading data from the repository if this is a config change.
-                // Data might not have loaded when the config change happen, so we saved the state.
-                savedInstanceState?.getBoolean(SHOULD_LOAD_DATA_FROM_REPO_KEY) ?: true
-
+        addEditTaskFragment = supportFragmentManager.findFragmentById(R.id.contentFrame) as AddEditTaskFragment?
+                ?: AddEditTaskFragment.newInstance(taskId).also {
+            replaceFragmentInActivity(it, R.id.contentFrame)
+        }
 
         // Create the presenter
-        addEditTaskPresenter = AddEditTaskPresenter(taskId,
-                Injection.provideTasksRepository(applicationContext), addEditTaskFragment,
-                shouldLoadDataFromRepo)
+        addEditTaskPresenter = AddEditTaskPresenter(
+            taskId,
+            Injection.provideTasksRepository(applicationContext),
+            Injection.provideNavigator(addEditTaskFragment),
+            Dispatchers.Main
+        )
+
+        savedInstanceState?.let {
+            addEditTaskPresenter.viewState =
+                    JSON.parse(AddEditTaskView.State.serializer(), it.getString(SAVED_VIEW_STATE))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        addEditTaskPresenter.attachView(addEditTaskFragment)
+    }
+
+    override fun onPause() {
+        addEditTaskPresenter.detachView()
+        super.onPause()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         // Save the state so that next time we know if we need to refresh data.
         super.onSaveInstanceState(outState.apply {
-            putBoolean(SHOULD_LOAD_DATA_FROM_REPO_KEY, addEditTaskPresenter.isDataMissing)
+            putString(
+                SAVED_VIEW_STATE,
+                JSON.stringify(AddEditTaskView.State.serializer(), addEditTaskPresenter.viewState)
+            )
         })
     }
 
@@ -73,7 +90,7 @@ class AddEditTaskActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val SHOULD_LOAD_DATA_FROM_REPO_KEY = "SHOULD_LOAD_DATA_FROM_REPO_KEY"
+        const val SAVED_VIEW_STATE = "SAVED_VIEW_STATE"
         const val REQUEST_ADD_TASK = 1
         const val REQUEST_EDIT_TASK = 2
     }

@@ -7,5 +7,6 @@ interface Navigator {
     fun navToTaskDetails(taskId: String)
 
     fun goBack()
+    fun returnResultOk()
 
 }

@@ -16,112 +16,115 @@
 
 package com.example.android.architecture.blueprints.todoapp.addedittask
 
-import com.example.android.architecture.blueprints.todoapp.any
-import com.example.android.architecture.blueprints.todoapp.capture
+import com.example.android.architecture.blueprints.todoapp.*
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
-import com.example.android.architecture.blueprints.todoapp.eq
-import org.hamcrest.CoreMatchers.`is`
-import org.junit.Assert.assertThat
+import kotlinx.coroutines.Dispatchers
 import org.junit.Before
 import org.junit.Test
-import org.mockito.ArgumentCaptor
-import org.mockito.Captor
-import org.mockito.Mock
-import org.mockito.Mockito.`when`
+import org.mockito.*
 import org.mockito.Mockito.verify
-import org.mockito.MockitoAnnotations
+import wtf.mvi.MviIntent
+import wtf.mvi.post
 
 /**
  * Unit tests for the implementation of [AddEditTaskPresenter].
  */
 class AddEditTaskPresenterTest {
 
-    @Mock private lateinit var tasksRepository: TasksRepository
+    @Mock
+    private lateinit var tasksRepository: TasksRepository
 
-    @Mock private lateinit var addEditTaskView: AddEditTaskContract.View
+    @Spy
+    private lateinit var addEditTaskView: FakeAddEditTaskView
+
+    @Mock
+    private lateinit var navigator: Navigator
 
     /**
      * [ArgumentCaptor] is a powerful Mockito API to capture argument values and use them to
      * perform further actions or assertions on them.
      */
-    @Captor private lateinit var getTaskCallbackCaptor: ArgumentCaptor<TasksDataSource.GetTaskCallback>
+    @Captor
+    private lateinit var getTaskCallbackCaptor: ArgumentCaptor<TasksDataSource.GetTaskCallback>
 
     private lateinit var addEditTaskPresenter: AddEditTaskPresenter
 
-    @Before fun setupMocksAndView() {
+    @Before
+    fun setupMocksAndView() {
         // Mockito has a very convenient way to inject mocks by using the @Mock annotation. To
         // inject the mocks in the test the initMocks method needs to be called.
         MockitoAnnotations.initMocks(this)
-
-        // The presenter wont't update the view unless it's active.
-        `when`(addEditTaskView.isActive).thenReturn(true)
     }
 
-    @Test fun createPresenter_setsThePresenterToView() {
+    @Test
+    fun saveNewTaskToRepository_showsSuccessMessageUi() {
         // Get a reference to the class under test
-        addEditTaskPresenter = AddEditTaskPresenter(
-                null, tasksRepository, addEditTaskView, true)
-
-        // Then the presenter is set to the view
-        verify(addEditTaskView).presenter = addEditTaskPresenter
-    }
-
-    @Test fun saveNewTaskToRepository_showsSuccessMessageUi() {
-        // Get a reference to the class under test
-        addEditTaskPresenter = AddEditTaskPresenter(null, tasksRepository, addEditTaskView, true)
+        addEditTaskPresenter = AddEditTaskPresenter(null, tasksRepository, navigator, Dispatchers.Unconfined)
+        addEditTaskPresenter.attachView(addEditTaskView)
 
         // When the presenter is asked to save a task
-        addEditTaskPresenter.saveTask("New Task Title", "Some Task Description")
+        addEditTaskView.titleChangedIntent.post("New Task Title")
+        addEditTaskView.descriptionChangedIntent.post("Some Task Description")
+        addEditTaskView.saveTaskIntent.post()
 
         // Then a task is saved in the repository and the view updated
-        verify(tasksRepository).saveTask(any<Task>()) // saved to the model
-        verify(addEditTaskView).showTasksList() // shown in the UI
+        verify(tasksRepository).saveTask(any()) // saved to the model
+        verify(navigator).returnResultOk() // shown in the UI
     }
 
-    @Test fun saveTask_emptyTaskShowsErrorUi() {
+    @Test
+    fun saveTask_emptyTaskShowsErrorUi() {
         // Get a reference to the class under test
-        addEditTaskPresenter = AddEditTaskPresenter(null, tasksRepository, addEditTaskView, true)
+        addEditTaskPresenter = AddEditTaskPresenter(null, tasksRepository, navigator, Dispatchers.Unconfined)
+        addEditTaskPresenter.attachView(addEditTaskView)
 
         // When the presenter is asked to save an empty task
-        addEditTaskPresenter.saveTask("", "")
+        addEditTaskView.saveTaskIntent.post()
 
         // Then an empty not error is shown in the UI
-        verify(addEditTaskView).showEmptyTaskError()
+        verify(addEditTaskView).render(argThat { showEmptyTaskError })
     }
 
-    @Test fun saveExistingTaskToRepository_showsSuccessMessageUi() {
+    @Test
+    fun saveExistingTaskToRepository_showsSuccessMessageUi() {
         // Get a reference to the class under test
-        addEditTaskPresenter = AddEditTaskPresenter(
-                "1", tasksRepository, addEditTaskView, true)
+        addEditTaskPresenter = AddEditTaskPresenter("1", tasksRepository, navigator, Dispatchers.Unconfined)
+        addEditTaskPresenter.attachView(addEditTaskView)
 
         // When the presenter is asked to save an existing task
-        addEditTaskPresenter.saveTask("Existing Task Title", "Some Task Description")
+        addEditTaskView.saveTaskIntent.post()
 
         // Then a task is saved in the repository and the view updated
-        verify(tasksRepository).saveTask(any<Task>()) // saved to the model
-        verify(addEditTaskView).showTasksList() // shown in the UI
+        verify(tasksRepository).saveTask(any()) // saved to the model
+        verify(navigator).returnResultOk() // shown in the UI
     }
 
-    @Test fun populateTask_callsRepoAndUpdatesView() {
+    @Test
+    fun attachView_showsCurrentTaskData_whenLoaded() {
         val testTask = Task("TITLE", "DESCRIPTION")
         // Get a reference to the class under test
-        addEditTaskPresenter = AddEditTaskPresenter(testTask.id,
-                tasksRepository, addEditTaskView, true).apply {
-            // When the presenter is asked to populate an existing task
-            populateTask()
-        }
+        addEditTaskPresenter = AddEditTaskPresenter(testTask.id, tasksRepository, navigator, Dispatchers.Unconfined)
+        // When the presenter is asked to populate an existing task
+        addEditTaskPresenter.attachView(addEditTaskView)
 
         // Then the task repository is queried and the view updated
         verify(tasksRepository).getTask(eq(testTask.id), capture(getTaskCallbackCaptor))
-        assertThat(addEditTaskPresenter.isDataMissing, `is`(true))
 
         // Simulate callback
         getTaskCallbackCaptor.value.onTaskLoaded(testTask)
 
-        verify(addEditTaskView).setTitle(testTask.title)
-        verify(addEditTaskView).setDescription(testTask.description)
-        assertThat(addEditTaskPresenter.isDataMissing, `is`(false))
+        verify(addEditTaskView).render(argThat {
+            !showEmptyTaskError &&
+                    title == testTask.title &&
+                    description == testTask.description
+        })
+    }
+
+    abstract class FakeAddEditTaskView : AddEditTaskView {
+        override val saveTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
+        override val titleChangedIntent = MviIntent<String>(Dispatchers.Unconfined)
+        override val descriptionChangedIntent = MviIntent<String>(Dispatchers.Unconfined)
     }
 }

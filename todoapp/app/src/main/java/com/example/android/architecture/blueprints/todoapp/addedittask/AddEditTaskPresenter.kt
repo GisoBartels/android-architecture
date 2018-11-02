@@ -16,38 +16,56 @@
 
 package com.example.android.architecture.blueprints.todoapp.addedittask
 
+import com.example.android.architecture.blueprints.todoapp.Navigator
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import wtf.mvi.MviPresenter
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Listens to user actions from the UI ([AddEditTaskFragment]), retrieves the data and updates
  * the UI as required.
- * @param taskId ID of the task to edit or null for a new task
- *
- * @param tasksRepository a repository of data for tasks
- *
- * @param addTaskView the add/edit view
- *
- * @param isDataMissing whether data needs to be loaded or not (for config changes)
  */
 class AddEditTaskPresenter(
-        private val taskId: String?,
-        val tasksRepository: TasksDataSource,
-        val addTaskView: AddEditTaskContract.View,
-        override var isDataMissing: Boolean
-) : AddEditTaskContract.Presenter, TasksDataSource.GetTaskCallback {
+    private val taskId: String?,
+    val tasksRepository: TasksDataSource,
+    private val navigator: Navigator,
+    override val coroutineContext: CoroutineContext
+) : MviPresenter<AddEditTaskView>, CoroutineScope, TasksDataSource.GetTaskCallback {
 
-    init {
-        addTaskView.presenter = this
-    }
+    override val intentActions = intentActions(
+        { titleChangedIntent.subscribe { viewState = viewState.copy(title = it) } },
+        { descriptionChangedIntent.subscribe { viewState = viewState.copy(description = it) } },
+        { saveTaskIntent.subscribe { saveTask(viewState.title, viewState.description) } }
+    )
 
-    override fun start() {
-        if (taskId != null && isDataMissing) {
+    private var view: AddEditTaskView? = null
+
+    var viewState = AddEditTaskView.State(false, "", "")
+
+    private var dismissMessageTimerJob: Job? = null
+
+    override fun attachView(view: AddEditTaskView) {
+        super.attachView(view)
+        this.view = view
+
+        if (taskId != null && isDataMissing()) {
             populateTask()
         }
     }
 
-    override fun saveTask(title: String, description: String) {
+    override fun detachView() {
+        this.view = null
+        super.detachView()
+    }
+
+    private fun isDataMissing() = viewState.title.isEmpty() && viewState.description.isEmpty()
+
+    private fun saveTask(title: String, description: String) {
         if (taskId == null) {
             createTask(title, description)
         } else {
@@ -55,7 +73,7 @@ class AddEditTaskPresenter(
         }
     }
 
-    override fun populateTask() {
+    private fun populateTask() {
         if (taskId == null) {
             throw RuntimeException("populateTask() was called but task is new.")
         }
@@ -63,28 +81,21 @@ class AddEditTaskPresenter(
     }
 
     override fun onTaskLoaded(task: Task) {
-        // The view may not be able to handle UI updates anymore
-        if (addTaskView.isActive) {
-            addTaskView.setTitle(task.title)
-            addTaskView.setDescription(task.description)
-        }
-        isDataMissing = false
+        viewState = viewState.copy(title = task.title, description = task.description)
+        view?.render(viewState)
     }
 
     override fun onDataNotAvailable() {
-        // The view may not be able to handle UI updates anymore
-        if (addTaskView.isActive) {
-            addTaskView.showEmptyTaskError()
-        }
+        showEmptyTaskError()
     }
 
     private fun createTask(title: String, description: String) {
         val newTask = Task(title, description)
         if (newTask.isEmpty) {
-            addTaskView.showEmptyTaskError()
+            showEmptyTaskError()
         } else {
             tasksRepository.saveTask(newTask)
-            addTaskView.showTasksList()
+            navigator.returnResultOk()
         }
     }
 
@@ -93,6 +104,18 @@ class AddEditTaskPresenter(
             throw RuntimeException("updateTask() was called but task is new.")
         }
         tasksRepository.saveTask(Task(title, description, taskId))
-        addTaskView.showTasksList() // After an edit, go back to the list.
+        navigator.returnResultOk()
+    }
+
+    private fun showEmptyTaskError() {
+        dismissMessageTimerJob?.cancel()
+        viewState = viewState.copy(showEmptyTaskError = true)
+        view?.render(viewState)
+        dismissMessageTimerJob = launch {
+            delay(2750)
+            viewState = viewState.copy(showEmptyTaskError = false)
+            view?.render(viewState)
+            dismissMessageTimerJob = null
+        }
     }
 }

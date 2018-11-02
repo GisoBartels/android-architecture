@@ -15,6 +15,7 @@
  */
 package com.example.android.architecture.blueprints.todoapp
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.support.v4.app.Fragment
@@ -67,6 +68,13 @@ object Injection {
 
         override fun goBack() {
             fragment.activity?.finish()
+        }
+
+        override fun returnResultOk() {
+            fragment.activity?.run {
+                setResult(Activity.RESULT_OK)
+                finish()
+            }
         }
     }
 }
