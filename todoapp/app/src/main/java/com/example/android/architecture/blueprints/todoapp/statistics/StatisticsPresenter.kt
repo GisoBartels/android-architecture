@@ -20,26 +20,38 @@ import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource
+import wtf.mvi.MviPresenter
+import kotlin.properties.Delegates.observable
 
 /**
  * Listens to user actions from the UI ([StatisticsFragment]), retrieves the data and updates
  * the UI as required.
  */
-class StatisticsPresenter(
-        val tasksRepository: TasksRepository,
-        val statisticsView: StatisticsContract.View
-) : StatisticsContract.Presenter {
+class StatisticsPresenter(val tasksRepository: TasksRepository) : MviPresenter<StatisticsView> {
 
-    init {
-        statisticsView.presenter = this
+    override val intentActions = intentActions()
+
+    private var view: StatisticsView? = null
+
+    private var viewState by observable(
+        StatisticsView.State(false, 0, 0, false)
+    ) { _, _, newValue ->
+        view?.render(newValue)
     }
 
-    override fun start() {
+    override fun attachView(view: StatisticsView) {
+        super.attachView(view)
+        this.view = view
         loadStatistics()
     }
 
+    override fun detachView() {
+        this.view = null
+        super.detachView()
+    }
+
     private fun loadStatistics() {
-        statisticsView.setProgressIndicator(true)
+        viewState = viewState.copy(showProgressIndicator = true)
 
         // The network request might be handled in a different thread so make sure Espresso knows
         // that the app is busy until the response is handled.
@@ -57,20 +69,18 @@ class StatisticsPresenter(
                 if (!EspressoIdlingResource.countingIdlingResource.isIdleNow) {
                     EspressoIdlingResource.decrement() // Set app as idle.
                 }
-                // The view may not be able to handle UI updates anymore
-                if (!statisticsView.isActive) {
-                    return
-                }
-                statisticsView.setProgressIndicator(false)
-                statisticsView.showStatistics(activeTasks, completedTasks)
+                viewState = viewState.copy(
+                    showProgressIndicator = false,
+                    numberOfIncompleteTasks = activeTasks,
+                    numberOfCompletedTasks = completedTasks
+                )
             }
 
             override fun onDataNotAvailable() {
-                // The view may not be able to handle UI updates anymore
-                if (!statisticsView.isActive) {
-                    return
-                }
-                statisticsView.showLoadingStatisticsError()
+                viewState = viewState.copy(
+                    showProgressIndicator = false,
+                    showLoadingStatisticsError = true
+                )
             }
         })
     }

@@ -35,6 +35,9 @@ class StatisticsActivity : AppCompatActivity() {
 
     private lateinit var drawerLayout: DrawerLayout
 
+    private lateinit var statisticsFragment: StatisticsFragment
+    private lateinit var statisticsPresenter: StatisticsPresenter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -54,14 +57,23 @@ class StatisticsActivity : AppCompatActivity() {
         val navigationView = findViewById<NavigationView>(R.id.nav_view)
         setupDrawerContent(navigationView)
 
-        val statisticsFragment = supportFragmentManager
-                .findFragmentById(R.id.contentFrame) as StatisticsFragment?
+        statisticsFragment = supportFragmentManager
+            .findFragmentById(R.id.contentFrame) as StatisticsFragment?
                 ?: StatisticsFragment.newInstance().also {
             replaceFragmentInActivity(it, R.id.contentFrame)
         }
 
-        StatisticsPresenter(
-                Injection.provideTasksRepository(applicationContext), statisticsFragment)
+        statisticsPresenter = StatisticsPresenter(Injection.provideTasksRepository(applicationContext))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        statisticsPresenter.attachView(statisticsFragment)
+    }
+
+    override fun onPause() {
+        statisticsPresenter.detachView()
+        super.onPause()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

@@ -15,6 +15,7 @@
  */
 package com.example.android.architecture.blueprints.todoapp.statistics
 
+import com.example.android.architecture.blueprints.todoapp.argThat
 import com.example.android.architecture.blueprints.todoapp.capture
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
@@ -25,7 +26,6 @@ import org.junit.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.Captor
 import org.mockito.Mock
-import org.mockito.Mockito.`when`
 import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations
 
@@ -34,88 +34,91 @@ import org.mockito.MockitoAnnotations
  */
 class StatisticsPresenterTest {
 
-    @Mock private lateinit var tasksRepository: TasksRepository
-    @Mock private lateinit var statisticsView: StatisticsContract.View
+    @Mock
+    private lateinit var tasksRepository: TasksRepository
+    @Mock
+    private lateinit var statisticsView: StatisticsView
     /**
      * [ArgumentCaptor] is a powerful Mockito API to capture argument values and use them to
      * perform further actions or assertions on them.
      */
-    @Captor private lateinit var loadTasksCallbackCaptor:
+    @Captor
+    private lateinit var loadTasksCallbackCaptor:
             ArgumentCaptor<TasksDataSource.LoadTasksCallback>
     private lateinit var statisticsPresenter: StatisticsPresenter
     private lateinit var tasks: MutableList<Task>
 
-    @Before fun setupStatisticsPresenter() {
+    @Before
+    fun setupStatisticsPresenter() {
         // Mockito has a very convenient way to inject mocks by using the @Mock annotation. To
         // inject the mocks in the test the initMocks method needs to be called.
         MockitoAnnotations.initMocks(this)
 
         // Get a reference to the class under test
-        statisticsPresenter = StatisticsPresenter(tasksRepository, statisticsView)
-
-        // The presenter won't update the view unless it's active.
-        `when`(statisticsView.isActive).thenReturn(true)
+        statisticsPresenter = StatisticsPresenter(tasksRepository)
 
         // We start the tasks to 3, with one active and two completed
         tasks = Lists.newArrayList(Task("Title1", "Description1"),
-                Task("Title2", "Description2").apply { isCompleted = true },
-                Task("Title3", "Description3").apply { isCompleted = true })
+            Task("Title2", "Description2").apply { isCompleted = true },
+            Task("Title3", "Description3").apply { isCompleted = true })
     }
 
-    @Test fun createPresenter_setsThePresenterToView() {
-        // Get a reference to the class under test
-        statisticsPresenter = StatisticsPresenter(tasksRepository, statisticsView)
-
-        // Then the presenter is set to the view
-        verify(statisticsView).presenter = statisticsPresenter
-    }
-
-    @Test fun loadEmptyTasksFromRepository_CallViewToDisplay() {
+    @Test
+    fun loadEmptyTasksFromRepository_CallViewToDisplay() {
         // Given an initialized StatisticsPresenter with no tasks
         tasks.clear()
 
         // When loading of Tasks is requested
-        statisticsPresenter.start()
+        statisticsPresenter.attachView(statisticsView)
 
         //Then progress indicator is shown
-        verify(statisticsView).setProgressIndicator(true)
+        verify(statisticsView).render(argThat { showProgressIndicator })
 
         // Callback is captured and invoked with stubbed tasks
         verify(tasksRepository).getTasks(capture(loadTasksCallbackCaptor))
         loadTasksCallbackCaptor.value.onTasksLoaded(tasks)
 
         // Then progress indicator is hidden and correct data is passed on to the view
-        verify(statisticsView).setProgressIndicator(false)
-        verify(statisticsView).showStatistics(0, 0)
+        verify(statisticsView).render(argThat {
+            !showProgressIndicator &&
+                    numberOfCompletedTasks == 0 &&
+                    numberOfIncompleteTasks == 0
+        })
     }
 
-    @Test fun loadNonEmptyTasksFromRepository_CallViewToDisplay() {
+    @Test
+    fun loadNonEmptyTasksFromRepository_CallViewToDisplay() {
         // Given an initialized StatisticsPresenter with 1 active and 2 completed tasks
 
         // When loading of Tasks is requested
-        statisticsPresenter.start()
+        statisticsPresenter.attachView(statisticsView)
 
         //Then progress indicator is shown
-        verify(statisticsView).setProgressIndicator(true)
+        verify(statisticsView).render(argThat { showProgressIndicator })
 
         // Callback is captured and invoked with stubbed tasks
         verify(tasksRepository).getTasks(capture(loadTasksCallbackCaptor))
         loadTasksCallbackCaptor.value.onTasksLoaded(tasks)
 
         // Then progress indicator is hidden and correct data is passed on to the view
-        verify(statisticsView).setProgressIndicator(false)
-        verify(statisticsView).showStatistics(1, 2)
+        verify(statisticsView).render(argThat {
+            !showProgressIndicator &&
+                    numberOfCompletedTasks == 2 &&
+                    numberOfIncompleteTasks == 1
+        })
     }
 
-    @Test fun loadStatisticsWhenTasksAreUnavailable_CallErrorToDisplay() {
+    @Test
+    fun loadStatisticsWhenTasksAreUnavailable_CallErrorToDisplay() {
         // When statistics are loaded
-        statisticsPresenter.start()
+        statisticsPresenter.attachView(statisticsView)
 
         // And tasks data isn't available
         verify(tasksRepository).getTasks(capture(loadTasksCallbackCaptor))
         loadTasksCallbackCaptor.value.onDataNotAvailable()
 
         // Then an error message is shown
-        verify(statisticsView).showLoadingStatisticsError()
+        verify(statisticsView).render(argThat { showLoadingStatisticsError })
     }
+
 }
