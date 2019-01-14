@@ -25,17 +25,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.example.android.architecture.blueprints.todoapp.R
-import wtf.mvi.android.clickIntent
-import wtf.mvi.android.textChangeIntent
+import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskView.AddEditTaskIntent.*
+import wtf.mvi.android.publishOnTextChange
+import wtf.mvi.intents
 
 /**
  * Main UI for the add task screen. Users can enter a task title and description.
  */
 class AddEditTaskFragment : Fragment(), AddEditTaskView {
-
-    override val titleChangedIntent by lazy { title.textChangeIntent() }
-    override val descriptionChangedIntent by lazy { description.textChangeIntent() }
-    override val saveTaskIntent by lazy { saveButton.clickIntent() }
 
     private lateinit var title: TextView
     private lateinit var description: TextView
@@ -49,19 +46,16 @@ class AddEditTaskFragment : Fragment(), AddEditTaskView {
         else
             hideEmptyTaskError()
 
-        title.setTextIfDifferent(viewState.title)
-        description.setTextIfDifferent(viewState.description)
-    }
-
-    private fun TextView.setTextIfDifferent(text: String) {
-        if (this.text.toString() != text)
-            this.text = text
+        title.text = viewState.title
+        description.text = viewState.description
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        saveButton = activity!!.findViewById<FloatingActionButton>(R.id.fab_edit_task_done)
-            .apply { setImageResource(R.drawable.ic_done) }
+        saveButton = activity!!.findViewById<FloatingActionButton>(R.id.fab_edit_task_done).apply {
+            setImageResource(R.drawable.ic_done)
+            setOnClickListener { intents.publish(SaveTask) }
+        }
     }
 
     override fun onCreateView(
@@ -73,6 +67,9 @@ class AddEditTaskFragment : Fragment(), AddEditTaskView {
             title = findViewById(R.id.add_task_title)
             description = findViewById(R.id.add_task_description)
         }
+        intents.publishOnTextChange(title) { TitleChanged(it) }
+        intents.publishOnTextChange(description) { DescriptionChanged(it) }
+
         setHasOptionsMenu(true)
         return root
     }

@@ -17,16 +17,19 @@
 package com.example.android.architecture.blueprints.todoapp.addedittask
 
 import com.example.android.architecture.blueprints.todoapp.*
+import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskView.AddEditTaskIntent.*
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import kotlinx.coroutines.Dispatchers
 import org.junit.Before
 import org.junit.Test
-import org.mockito.*
+import org.mockito.ArgumentCaptor
+import org.mockito.Captor
+import org.mockito.Mock
 import org.mockito.Mockito.verify
-import wtf.mvi.MviIntent
-import wtf.mvi.post
+import org.mockito.MockitoAnnotations
+import wtf.mvi.intents
 
 /**
  * Unit tests for the implementation of [AddEditTaskPresenter].
@@ -36,8 +39,8 @@ class AddEditTaskPresenterTest {
     @Mock
     private lateinit var tasksRepository: TasksRepository
 
-    @Spy
-    private lateinit var addEditTaskView: FakeAddEditTaskView
+    @Mock
+    private lateinit var addEditTaskView: AddEditTaskView
 
     @Mock
     private lateinit var navigator: Navigator
@@ -65,9 +68,9 @@ class AddEditTaskPresenterTest {
         addEditTaskPresenter.attachView(addEditTaskView)
 
         // When the presenter is asked to save a task
-        addEditTaskView.titleChangedIntent.post("New Task Title")
-        addEditTaskView.descriptionChangedIntent.post("Some Task Description")
-        addEditTaskView.saveTaskIntent.post()
+        addEditTaskView.intents.publish(TitleChanged("New Task Title"))
+        addEditTaskView.intents.publish(DescriptionChanged("Some Task Description"))
+        addEditTaskView.intents.publish(SaveTask)
 
         // Then a task is saved in the repository and the view updated
         verify(tasksRepository).saveTask(any()) // saved to the model
@@ -81,7 +84,7 @@ class AddEditTaskPresenterTest {
         addEditTaskPresenter.attachView(addEditTaskView)
 
         // When the presenter is asked to save an empty task
-        addEditTaskView.saveTaskIntent.post()
+        addEditTaskView.intents.publish(SaveTask)
 
         // Then an empty not error is shown in the UI
         verify(addEditTaskView).render(argThat { showEmptyTaskError })
@@ -94,7 +97,7 @@ class AddEditTaskPresenterTest {
         addEditTaskPresenter.attachView(addEditTaskView)
 
         // When the presenter is asked to save an existing task
-        addEditTaskView.saveTaskIntent.post()
+        addEditTaskView.intents.publish(SaveTask)
 
         // Then a task is saved in the repository and the view updated
         verify(tasksRepository).saveTask(any()) // saved to the model
@@ -122,9 +125,4 @@ class AddEditTaskPresenterTest {
         })
     }
 
-    abstract class FakeAddEditTaskView : AddEditTaskView {
-        override val saveTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val titleChangedIntent = MviIntent<String>(Dispatchers.Unconfined)
-        override val descriptionChangedIntent = MviIntent<String>(Dispatchers.Unconfined)
-    }
 }

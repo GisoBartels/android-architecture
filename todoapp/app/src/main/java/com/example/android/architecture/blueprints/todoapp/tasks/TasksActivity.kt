@@ -73,7 +73,9 @@ class TasksActivity : AppCompatActivity() {
         ).apply {
             // Load previously saved state, if available.
             if (savedInstanceState != null) {
-                viewState = JSON.parse(TasksView.State.serializer(), savedInstanceState.getString(SAVED_VIEW_STATE)!!)
+                updateViewState(
+                    JSON.parse(TasksView.State.serializer(), savedInstanceState.getString(SAVED_VIEW_STATE)!!)
+                )
             }
         }
     }

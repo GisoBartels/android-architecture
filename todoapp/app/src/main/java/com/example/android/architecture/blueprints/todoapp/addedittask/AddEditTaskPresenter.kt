@@ -17,13 +17,15 @@
 package com.example.android.architecture.blueprints.todoapp.addedittask
 
 import com.example.android.architecture.blueprints.todoapp.Navigator
+import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskView.AddEditTaskIntent.*
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import wtf.mvi.MviPresenter
+import wtf.mvi.MviIntent
+import wtf.mvi.subscription.MviBasePresenter
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -32,35 +34,26 @@ import kotlin.coroutines.CoroutineContext
  */
 class AddEditTaskPresenter(
     private val taskId: String?,
-    val tasksRepository: TasksDataSource,
+    private val tasksRepository: TasksDataSource,
     private val navigator: Navigator,
     override val coroutineContext: CoroutineContext
-) : MviPresenter<AddEditTaskView>, CoroutineScope, TasksDataSource.GetTaskCallback {
-
-    override val intentActions = intentActions(
-        { titleChangedIntent.subscribe { viewState = viewState.copy(title = it) } },
-        { descriptionChangedIntent.subscribe { viewState = viewState.copy(description = it) } },
-        { saveTaskIntent.subscribe { saveTask(viewState.title, viewState.description) } }
-    )
-
-    private var view: AddEditTaskView? = null
-
-    var viewState = AddEditTaskView.State(false, "", "")
+) : MviBasePresenter<AddEditTaskView, AddEditTaskView.State>(AddEditTaskView.State(false, "", "")),
+    CoroutineScope, TasksDataSource.GetTaskCallback {
 
     private var dismissMessageTimerJob: Job? = null
 
-    override fun attachView(view: AddEditTaskView) {
-        super.attachView(view)
-        this.view = view
-
-        if (taskId != null && isDataMissing()) {
-            populateTask()
+    override fun onIntent(intent: MviIntent) {
+        when (intent) {
+            is TitleChanged -> updateViewStateWithoutRendering(viewState.copy(title = intent.title))
+            is DescriptionChanged -> updateViewStateWithoutRendering(viewState.copy(description = intent.description))
+            SaveTask -> saveTask(viewState.title, viewState.description)
         }
     }
 
-    override fun detachView() {
-        this.view = null
-        super.detachView()
+    override fun onAttachView(view: AddEditTaskView) {
+        if (taskId != null && isDataMissing()) {
+            populateTask()
+        }
     }
 
     private fun isDataMissing() = viewState.title.isEmpty() && viewState.description.isEmpty()
@@ -81,8 +74,7 @@ class AddEditTaskPresenter(
     }
 
     override fun onTaskLoaded(task: Task) {
-        viewState = viewState.copy(title = task.title, description = task.description)
-        view?.render(viewState)
+        updateViewState(viewState.copy(title = task.title, description = task.description))
     }
 
     override fun onDataNotAvailable() {
@@ -109,12 +101,10 @@ class AddEditTaskPresenter(
 
     private fun showEmptyTaskError() {
         dismissMessageTimerJob?.cancel()
-        viewState = viewState.copy(showEmptyTaskError = true)
-        view?.render(viewState)
+        updateViewState(viewState.copy(showEmptyTaskError = true))
         dismissMessageTimerJob = launch {
             delay(2750)
-            viewState = viewState.copy(showEmptyTaskError = false)
-            view?.render(viewState)
+            updateViewState(viewState.copy(showEmptyTaskError = false))
             dismissMessageTimerJob = null
         }
     }

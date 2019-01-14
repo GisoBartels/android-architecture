@@ -67,7 +67,7 @@ android {
  all versions in a single place. This improves readability and helps managing project complexity.
  */
 dependencies {
-    implementation "wtf.mvi:android:0.4"
+    implementation "wtf.mvi:android:0.5"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:$kotlinxSerializationVersion"

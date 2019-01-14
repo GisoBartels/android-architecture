@@ -7,14 +7,16 @@ import wtf.mvi.MviView
 
 interface TasksView : MviView<TasksView.State> {
 
-    val filterTasksIntent: MviIntent<TasksFilterType>
-    val refreshTasksIntent: MviIntent<Unit>
-    val addNewTaskIntent: MviIntent<Unit>
-    val openTaskDetailsIntent: MviIntent<Task>
-    val completeTaskIntent: MviIntent<Task>
-    val activateTaskIntent: MviIntent<Task>
-    val clearCompletedTasksIntent: MviIntent<Unit>
-    val taskSuccessfullySavedIntent: MviIntent<Unit>
+    sealed class TasksIntents : MviIntent {
+        data class FilterTasks(val tasksFilterType: TasksFilterType) : TasksIntents()
+        object RefreshTasks : TasksIntents()
+        object AddNewTask : TasksIntents()
+        data class OpenTaskDetails(val task: Task) : TasksIntents()
+        data class CompleteTask(val task: Task) : TasksIntents()
+        data class ActivateTask(val task: Task) : TasksIntents()
+        object ClearCompletedTasks : TasksIntents()
+        object TaskSuccessfullySaved : TasksIntents()
+    }
 
     @Serializable
     data class State(

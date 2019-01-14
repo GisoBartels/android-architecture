@@ -59,8 +59,9 @@ class AddEditTaskActivity : AppCompatActivity() {
         )
 
         savedInstanceState?.let {
-            addEditTaskPresenter.viewState =
-                    JSON.parse(AddEditTaskView.State.serializer(), it.getString(SAVED_VIEW_STATE))
+            addEditTaskPresenter.updateViewState(
+                JSON.parse(AddEditTaskView.State.serializer(), it.getString(SAVED_VIEW_STATE))
+            )
         }
     }
 

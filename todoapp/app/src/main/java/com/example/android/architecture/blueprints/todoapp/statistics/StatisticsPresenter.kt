@@ -27,9 +27,7 @@ import kotlin.properties.Delegates.observable
  * Listens to user actions from the UI ([StatisticsFragment]), retrieves the data and updates
  * the UI as required.
  */
-class StatisticsPresenter(val tasksRepository: TasksRepository) : MviPresenter<StatisticsView> {
-
-    override val intentActions = intentActions()
+class StatisticsPresenter(private val tasksRepository: TasksRepository) : MviPresenter<StatisticsView> {
 
     private var view: StatisticsView? = null
 
@@ -40,14 +38,12 @@ class StatisticsPresenter(val tasksRepository: TasksRepository) : MviPresenter<S
     }
 
     override fun attachView(view: StatisticsView) {
-        super.attachView(view)
         this.view = view
         loadStatistics()
     }
 
     override fun detachView() {
         this.view = null
-        super.detachView()
     }
 
     private fun loadStatistics() {

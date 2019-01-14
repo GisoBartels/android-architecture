@@ -6,10 +6,12 @@ import wtf.mvi.MviView
 
 interface TaskDetailsView : MviView<TaskDetailsView.State> {
 
-    val editTaskIntent: MviIntent<Unit>
-    val deleteTaskIntent: MviIntent<Unit>
-    val completeTaskIntent: MviIntent<Unit>
-    val activateTaskIntent: MviIntent<Unit>
+    sealed class TaskDetailsIntent : MviIntent {
+        object EditTask : TaskDetailsIntent()
+        object DeleteTask : TaskDetailsIntent()
+        object CompleteTask : TaskDetailsIntent()
+        object ActivateTask : TaskDetailsIntent()
+    }
 
     @Serializable
     data class State(

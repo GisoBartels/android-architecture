@@ -22,6 +22,7 @@ import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.ShowTasks
+import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksIntents.*
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
 import com.google.common.collect.Lists
 import kotlinx.coroutines.Dispatchers
@@ -30,9 +31,7 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
-import org.mockito.Spy
-import wtf.mvi.MviIntent
-import wtf.mvi.post
+import wtf.mvi.intents
 
 /**
  * Unit tests for the implementation of [TasksPresenter]
@@ -42,8 +41,8 @@ class TasksPresenterTest {
     @Mock
     private lateinit var tasksRepository: TasksRepository
 
-    @Spy
-    private lateinit var tasksView: FakeTasksView
+    @Mock
+    private lateinit var tasksView: TasksView
 
     @Mock
     private lateinit var navigator: Navigator
@@ -106,7 +105,7 @@ class TasksPresenterTest {
         tasksPresenter.attachView(tasksView)
 
         // When loading of Tasks is requested
-        tasksView.filterTasksIntent.post(TasksFilterType.ACTIVE_TASKS)
+        tasksView.intents.publish(FilterTasks(TasksFilterType.ACTIVE_TASKS))
 
         // Then progress indicator is hidden and active tasks are shown in UI
         verify(tasksView).render(argThat {
@@ -123,7 +122,7 @@ class TasksPresenterTest {
         tasksPresenter.attachView(tasksView)
 
         // When loading of Tasks is requested
-        tasksView.filterTasksIntent.post(TasksFilterType.COMPLETED_TASKS)
+        tasksView.intents.publish(FilterTasks(TasksFilterType.COMPLETED_TASKS))
 
         // Then progress indicator is hidden and completed tasks are shown in UI
         verify(tasksView).render(argThat {
@@ -140,7 +139,7 @@ class TasksPresenterTest {
         tasksPresenter.attachView(tasksView)
 
         // When adding a new task
-        tasksView.addNewTaskIntent.post()
+        tasksView.intents.publish(AddNewTask)
 
         // Then add task UI is shown
         verify(navigator).navToAddTask()
@@ -156,7 +155,7 @@ class TasksPresenterTest {
 
 
         // When open task details is requested
-        tasksView.openTaskDetailsIntent.post(requestedTask)
+        tasksView.intents.publish(OpenTaskDetails(requestedTask))
 
         // Then task detail UI is shown
         verify(navigator).navToTaskDetails(requestedTask.id)
@@ -171,7 +170,7 @@ class TasksPresenterTest {
         tasksPresenter.attachView(tasksView)
 
         // When task is marked as complete
-        tasksView.completeTaskIntent.post(task)
+        tasksView.intents.publish(CompleteTask(task))
 
         // Then repository is called and task marked complete UI is shown
         verify(tasksRepository).completeTask(task)
@@ -187,7 +186,7 @@ class TasksPresenterTest {
         tasksPresenter.attachView(tasksView)
 
         // When task is marked as activated
-        tasksView.activateTaskIntent.post(task)
+        tasksView.intents.publish(ActivateTask(task))
 
         // Then repository is called and task marked active UI is shown
         verify(tasksRepository).activateTask(task)
@@ -204,17 +203,6 @@ class TasksPresenterTest {
 
         // Then an error message is shown
         verify(tasksView).render(argThat { showMessage == LoadingTasksError })
-    }
-
-    abstract class FakeTasksView : TasksView {
-        override val filterTasksIntent = MviIntent<TasksFilterType>(Dispatchers.Unconfined)
-        override val refreshTasksIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val addNewTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val openTaskDetailsIntent = MviIntent<Task>(Dispatchers.Unconfined)
-        override val completeTaskIntent = MviIntent<Task>(Dispatchers.Unconfined)
-        override val activateTaskIntent = MviIntent<Task>(Dispatchers.Unconfined)
-        override val clearCompletedTasksIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val taskSuccessfullySavedIntent = MviIntent<Unit>(Dispatchers.Unconfined)
     }
 
 }

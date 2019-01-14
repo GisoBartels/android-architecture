@@ -20,16 +20,17 @@ import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.*
+import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksIntents.*
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
 import com.example.android.architecture.blueprints.todoapp.util.EspressoIdlingResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import wtf.mvi.MviPresenter
+import wtf.mvi.MviIntent
+import wtf.mvi.subscription.MviBasePresenter
 import java.util.*
 import kotlin.coroutines.CoroutineContext
-import kotlin.properties.Delegates.observable
 
 /**
  * Listens to user actions from the UI ([TasksFragment]), retrieves the data and updates the
@@ -39,46 +40,33 @@ class TasksPresenter(
     private val tasksRepository: TasksRepository,
     private val navigator: Navigator,
     override val coroutineContext: CoroutineContext
-) : MviPresenter<TasksView>, CoroutineScope {
-
-    override val intentActions = intentActions(
-        { filterTasksIntent.subscribe { filterTasks(it) } },
-        { refreshTasksIntent.subscribe { loadTasks(true) } },
-        { addNewTaskIntent.subscribe { navigator.navToAddTask() } },
-        { openTaskDetailsIntent.subscribe { navigator.navToTaskDetails(it.id) } },
-        { completeTaskIntent.subscribe { completeTask(it) } },
-        { activateTaskIntent.subscribe { activateTask(it) } },
-        { clearCompletedTasksIntent.subscribe { clearCompletedTasks() } },
-        { taskSuccessfullySavedIntent.subscribe { showMessage(SuccessfullySaved) } }
-    )
-
-    var viewState by observable(
-        TasksView.State(false, ShowNoTasks, emptyList(), TasksFilterType.ALL_TASKS, NoMessage)
-    ) { _, _, newValue ->
-        launch { view?.render(newValue) }
-    }
+) : MviBasePresenter<TasksView, TasksView.State>(
+    TasksView.State(false, ShowNoTasks, emptyList(), TasksFilterType.ALL_TASKS, NoMessage)
+), CoroutineScope {
 
     private var firstLoad = true
 
-    private var view: TasksView? = null
-
     private var dismissMessageTimerJob: Job? = null
 
-    override fun attachView(view: TasksView) {
-        super.attachView(view)
-        this.view = view
-        launch { view.render(viewState) }
+    override fun onIntent(intent: MviIntent) {
+        when (intent) {
+            is FilterTasks -> filterTasks(intent.tasksFilterType)
+            is RefreshTasks -> loadTasks(true)
+            is AddNewTask -> navigator.navToAddTask()
+            is OpenTaskDetails -> navigator.navToTaskDetails(intent.task.id)
+            is CompleteTask -> completeTask(intent.task)
+            is ActivateTask -> activateTask(intent.task)
+            is ClearCompletedTasks -> clearCompletedTasks()
+            is TaskSuccessfullySaved -> showMessage(SuccessfullySaved)
+        }
+    }
 
+    override fun onAttachView(view: TasksView) {
         loadTasks(false)
     }
 
-    override fun detachView() {
-        super.detachView()
-        this.view = null
-    }
-
     private fun filterTasks(filterType: TasksFilterType) {
-        viewState = viewState.copy(activeFilter = filterType)
+        updateViewState(viewState.copy(activeFilter = filterType))
         loadTasks(false)
     }
 
@@ -95,7 +83,7 @@ class TasksPresenter(
      */
     private fun loadTasks(forceUpdate: Boolean, showLoadingUI: Boolean) {
         if (showLoadingUI) {
-            viewState = viewState.copy(showLoadingIndicator = true)
+            updateViewState(viewState.copy(showLoadingIndicator = true))
         }
         if (forceUpdate) {
             tasksRepository.refreshTasks()
@@ -129,14 +117,14 @@ class TasksPresenter(
                     }
                 }
                 if (showLoadingUI) {
-                    viewState = viewState.copy(showLoadingIndicator = false)
+                    updateViewState(viewState.copy(showLoadingIndicator = false))
                 }
 
                 processTasks(tasksToShow)
             }
 
             override fun onDataNotAvailable() {
-                viewState = viewState.copy(showMessage = LoadingTasksError)
+                updateViewState(viewState.copy(showMessage = LoadingTasksError))
             }
         })
     }
@@ -147,17 +135,19 @@ class TasksPresenter(
             processEmptyTasks()
         } else {
             // Show the list of tasks
-            viewState = viewState.copy(taskDisplay = ShowTasks, taskList = tasks)
+            updateViewState(viewState.copy(taskDisplay = ShowTasks, taskList = tasks))
         }
     }
 
     private fun processEmptyTasks() {
-        viewState = viewState.copy(
-            taskDisplay = when (viewState.activeFilter) {
-                TasksFilterType.ACTIVE_TASKS -> ShowNoActiveTasks
-                TasksFilterType.COMPLETED_TASKS -> ShowNoCompletedTasks
-                else -> ShowNoTasks
-            }
+        updateViewState(
+            viewState.copy(
+                taskDisplay = when (viewState.activeFilter) {
+                    TasksFilterType.ACTIVE_TASKS -> ShowNoActiveTasks
+                    TasksFilterType.COMPLETED_TASKS -> ShowNoCompletedTasks
+                    else -> ShowNoTasks
+                }
+            )
         )
     }
 
@@ -181,10 +171,10 @@ class TasksPresenter(
 
     private fun showMessage(message: TasksView.TasksMessage) {
         dismissMessageTimerJob?.cancel()
-        viewState = viewState.copy(showMessage = message)
+        updateViewState(viewState.copy(showMessage = message))
         dismissMessageTimerJob = launch {
             delay(2750)
-            viewState = viewState.copy(showMessage = NoMessage)
+            updateViewState(viewState.copy(showMessage = NoMessage))
             dismissMessageTimerJob = null
         }
     }

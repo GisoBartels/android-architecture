@@ -24,6 +24,7 @@ import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepo
 import com.example.android.architecture.blueprints.todoapp.eq
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.TaskMarkedActive
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.TaskMarkedCompleted
+import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailsIntent.*
 import kotlinx.coroutines.Dispatchers
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,10 +32,8 @@ import org.mockito.ArgumentCaptor
 import org.mockito.Captor
 import org.mockito.Mock
 import org.mockito.Mockito.*
-import org.mockito.Spy
 import org.mockito.junit.MockitoJUnitRunner
-import wtf.mvi.MviIntent
-import wtf.mvi.post
+import wtf.mvi.intents
 
 /**
  * Unit tests for the implementation of [TaskDetailPresenter]
@@ -58,8 +57,8 @@ class TaskDetailPresenterTest {
     @Mock
     private lateinit var navigator: Navigator
 
-    @Spy
-    private lateinit var taskDetailView: FakeTaskDetailsView
+    @Mock
+    private lateinit var taskDetailView: TaskDetailsView
 
     /**
      * [ArgumentCaptor] is a powerful Mockito API to capture argument values and use them to
@@ -133,7 +132,7 @@ class TaskDetailPresenterTest {
         taskDetailPresenter.attachView(taskDetailView)
 
         // When the deletion of a task is requested
-        taskDetailView.deleteTaskIntent.post()
+        taskDetailView.intents.publish(DeleteTask)
 
         // Then the repository is notified and the detail view is closed
         verify(tasksRepository).deleteTask(task.id)
@@ -148,7 +147,7 @@ class TaskDetailPresenterTest {
         taskDetailPresenter.attachView(taskDetailView)
 
         // When a task gets completed
-        taskDetailView.completeTaskIntent.post()
+        taskDetailView.intents.publish(CompleteTask)
 
         // Then a request is sent to the task repository and the UI is updated
         verify(tasksRepository).completeTask(task.id)
@@ -163,7 +162,7 @@ class TaskDetailPresenterTest {
         taskDetailPresenter.attachView(taskDetailView)
 
         // When a task gets activated
-        taskDetailView.activateTaskIntent.post()
+        taskDetailView.intents.publish(ActivateTask)
 
         // Then a request is sent to the task repository and the UI is updated
         verify(tasksRepository).activateTask(task.id)
@@ -177,7 +176,7 @@ class TaskDetailPresenterTest {
         taskDetailPresenter.attachView(taskDetailView)
 
         // When the edit of an activeTask is requested
-        taskDetailView.editTaskIntent.post()
+        taskDetailView.intents.publish(EditTask)
 
         // Then the app navigates to the edit task screen
         verify(navigator).navToEditTask(activeTask.id)
@@ -190,7 +189,7 @@ class TaskDetailPresenterTest {
         taskDetailPresenter.attachView(taskDetailView)
 
         // When the edit of an invalid task id is requested
-        taskDetailView.editTaskIntent.post()
+        taskDetailView.intents.publish(EditTask)
 
         // Then the app never navigates to the edit task screen
         verify(navigator, never()).navToEditTask(invalidTaskId)
@@ -198,10 +197,4 @@ class TaskDetailPresenterTest {
         verify(taskDetailView).render(argThat { taskMissing == true })
     }
 
-    abstract class FakeTaskDetailsView : TaskDetailsView {
-        override val editTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val deleteTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val completeTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-        override val activateTaskIntent = MviIntent<Unit>(Dispatchers.Unconfined)
-    }
 }

@@ -20,13 +20,14 @@ import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
 import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.*
+import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailsIntent.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import wtf.mvi.MviPresenter
+import wtf.mvi.MviIntent
+import wtf.mvi.subscription.MviBasePresenter
 import kotlin.coroutines.CoroutineContext
-import kotlin.properties.Delegates
 
 /**
  * Listens to user actions from the UI ([TaskDetailFragment]), retrieves the data and updates
@@ -37,48 +38,47 @@ class TaskDetailPresenter(
     private val tasksRepository: TasksRepository,
     private val navigator: Navigator,
     override val coroutineContext: CoroutineContext
-) : MviPresenter<TaskDetailsView>, CoroutineScope {
-
-    override val intentActions = intentActions(
-        { editTaskIntent.subscribe { editTask() } },
-        { deleteTaskIntent.subscribe { deleteTask() } },
-        { completeTaskIntent.subscribe { completeTask() } },
-        { activateTaskIntent.subscribe { activateTask() } }
-    )
-
-    private var view: TaskDetailsView? = null
-
-    var viewState by Delegates.observable(TaskDetailsView.State(false, false, "", "", false, NoMessage))
-    { _, _, newValue -> view?.render(newValue) }
+) : MviBasePresenter<TaskDetailsView, TaskDetailsView.State>(
+    TaskDetailsView.State(false, false, "", "", false, NoMessage)
+), CoroutineScope {
 
     private var dismissMessageTimerJob: Job? = null
 
-    override fun attachView(view: TaskDetailsView) {
-        super.attachView(view)
-        this.view = view
+    override fun onIntent(intent: MviIntent) {
+        when (intent) {
+            is EditTask -> editTask()
+            is DeleteTask -> deleteTask()
+            is CompleteTask -> completeTask()
+            is ActivateTask -> activateTask()
+        }
+    }
+
+    override fun onAttachView(view: TaskDetailsView) {
         openTask()
     }
 
     private fun openTask() {
         if (taskId.isEmpty()) {
-            viewState = viewState.copy(taskMissing = true)
+            updateViewState(viewState.copy(taskMissing = true))
             return
         }
 
-        viewState = viewState.copy(showLoadingIndicator = true)
+        updateViewState(viewState.copy(showLoadingIndicator = true))
         tasksRepository.getTask(taskId, object : TasksDataSource.GetTaskCallback {
             override fun onTaskLoaded(task: Task) {
-                viewState = viewState.copy(
-                    showLoadingIndicator = false,
-                    taskMissing = false,
-                    title = task.title,
-                    description = task.description,
-                    completionStatus = task.isCompleted
+                updateViewState(
+                    viewState.copy(
+                        showLoadingIndicator = false,
+                        taskMissing = false,
+                        title = task.title,
+                        description = task.description,
+                        completionStatus = task.isCompleted
+                    )
                 )
             }
 
             override fun onDataNotAvailable() {
-                viewState = viewState.copy(taskMissing = true, title = "", description = "")
+                updateViewState(viewState.copy(taskMissing = true, title = "", description = ""))
             }
         })
     }
@@ -102,7 +102,7 @@ class TaskDetailPresenter(
         if (taskId.isEmpty()) return
 
         tasksRepository.completeTask(taskId)
-        viewState = viewState.copy(completionStatus = true)
+        updateViewState(viewState.copy(completionStatus = true))
         showMessage(TaskMarkedCompleted)
     }
 
@@ -110,16 +110,16 @@ class TaskDetailPresenter(
         if (taskId.isEmpty()) return
 
         tasksRepository.activateTask(taskId)
-        viewState = viewState.copy(completionStatus = false)
+        updateViewState(viewState.copy(completionStatus = false))
         showMessage(TaskMarkedActive)
     }
 
     private fun showMessage(message: TaskDetailsView.TaskDetailMessage) {
         dismissMessageTimerJob?.cancel()
-        viewState = viewState.copy(showMessage = message)
+        updateViewState(viewState.copy(showMessage = message))
         dismissMessageTimerJob = launch {
             delay(2750)
-            viewState = viewState.copy(showMessage = NoMessage)
+            updateViewState(viewState.copy(showMessage = NoMessage))
             dismissMessageTimerJob = null
         }
     }

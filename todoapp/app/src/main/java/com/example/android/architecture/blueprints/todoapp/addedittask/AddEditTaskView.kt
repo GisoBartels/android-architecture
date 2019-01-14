@@ -6,9 +6,11 @@ import wtf.mvi.MviView
 
 interface AddEditTaskView : MviView<AddEditTaskView.State> {
 
-    val saveTaskIntent: MviIntent<Unit>
-    val titleChangedIntent: MviIntent<String>
-    val descriptionChangedIntent: MviIntent<String>
+    sealed class AddEditTaskIntent : MviIntent {
+        object SaveTask : AddEditTaskIntent()
+        data class TitleChanged(val title: String) : AddEditTaskIntent()
+        data class DescriptionChanged(val description: String) : AddEditTaskIntent()
+    }
 
     @Serializable
     data class State(

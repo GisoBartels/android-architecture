@@ -28,18 +28,13 @@ import android.widget.TextView
 import com.example.android.architecture.blueprints.todoapp.R
 import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity
 import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailMessage.*
-import wtf.mvi.MviIntent
-import wtf.mvi.post
+import com.example.android.architecture.blueprints.todoapp.taskdetail.TaskDetailsView.TaskDetailsIntent.*
+import wtf.mvi.intents
 
 /**
  * Main UI for the task detail screen.
  */
 class TaskDetailFragment : Fragment(), TaskDetailsView {
-
-    override val editTaskIntent = MviIntent<Unit>()
-    override val deleteTaskIntent = MviIntent<Unit>()
-    override val completeTaskIntent = MviIntent<Unit>()
-    override val activateTaskIntent = MviIntent<Unit>()
 
     private lateinit var detailTitle: TextView
     private lateinit var detailDescription: TextView
@@ -62,15 +57,15 @@ class TaskDetailFragment : Fragment(), TaskDetailsView {
 
         detailCompleteStatus.setOnClickListener {
             if (detailCompleteStatus.isChecked) {
-                completeTaskIntent.post()
+                intents.publish(CompleteTask)
             } else {
-                activateTaskIntent.post()
+                intents.publish(ActivateTask)
             }
         }
 
         // Set up floating action button
         activity?.findViewById<FloatingActionButton>(R.id.fab_edit_task)?.setOnClickListener {
-            editTaskIntent.post()
+            intents.publish(EditTask)
         }
 
         return root
@@ -78,14 +73,14 @@ class TaskDetailFragment : Fragment(), TaskDetailsView {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         val deletePressed = item.itemId == R.id.menu_delete
-        if (deletePressed) deleteTaskIntent.post()
+        if (deletePressed)
+            intents.publish(DeleteTask)
         return deletePressed
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater) {
         inflater.inflate(R.menu.taskdetail_fragment_menu, menu)
     }
-
 
     override fun render(viewState: TaskDetailsView.State) {
         detailTitle.text = viewState.title

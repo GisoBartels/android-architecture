@@ -32,24 +32,15 @@ import com.example.android.architecture.blueprints.todoapp.R
 import com.example.android.architecture.blueprints.todoapp.addedittask.AddEditTaskActivity
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TaskDisplay.*
+import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksIntents.*
 import com.example.android.architecture.blueprints.todoapp.tasks.TasksView.TasksMessage.*
-import wtf.mvi.MviIntent
-import wtf.mvi.post
+import wtf.mvi.intents
 import java.util.*
 
 /**
  * Display a grid of [Task]s. User can choose to view all, active or completed tasks.
  */
 class TasksFragment : Fragment(), TasksView {
-
-    override val filterTasksIntent = MviIntent<TasksFilterType>()
-    override val refreshTasksIntent = MviIntent<Unit>()
-    override val addNewTaskIntent = MviIntent<Unit>()
-    override val openTaskDetailsIntent = MviIntent<Task>()
-    override val completeTaskIntent = MviIntent<Task>()
-    override val activateTaskIntent = MviIntent<Task>()
-    override val clearCompletedTasksIntent = MviIntent<Unit>()
-    override val taskSuccessfullySavedIntent = MviIntent<Unit>()
 
     private lateinit var noTasksView: View
     private lateinit var noTaskIcon: ImageView
@@ -65,15 +56,15 @@ class TasksFragment : Fragment(), TasksView {
      */
     private var itemListener: TaskItemListener = object : TaskItemListener {
         override fun onTaskClick(clickedTask: Task) {
-            openTaskDetailsIntent.post(clickedTask)
+            intents.publish(OpenTaskDetails(clickedTask))
         }
 
         override fun onCompleteTaskClick(completedTask: Task) {
-            completeTaskIntent.post(completedTask)
+            intents.publish(CompleteTask(completedTask))
         }
 
         override fun onActivateTaskClick(activatedTask: Task) {
-            activateTaskIntent.post(activatedTask)
+            intents.publish(ActivateTask(activatedTask))
         }
     }
 
@@ -85,7 +76,7 @@ class TasksFragment : Fragment(), TasksView {
         if (AddEditTaskActivity.REQUEST_ADD_TASK == requestCode && Activity.RESULT_OK == resultCode) {
             Handler().post {
                 // post intent, when view is attached
-                taskSuccessfullySavedIntent.post()
+                intents.publish(TaskSuccessfullySaved)
             }
         }
     }
@@ -109,7 +100,7 @@ class TasksFragment : Fragment(), TasksView {
                 )
                 // Set the scrolling view in the custom SwipeRefreshLayout.
                 scrollUpChild = listView
-                setOnRefreshListener { refreshTasksIntent.post() }
+                setOnRefreshListener { intents.publish(RefreshTasks) }
             }
 
             filteringLabelView = findViewById(R.id.filteringLabel)
@@ -120,13 +111,13 @@ class TasksFragment : Fragment(), TasksView {
             noTaskIcon = findViewById(R.id.noTasksIcon)
             noTaskMainView = findViewById(R.id.noTasksMain)
             noTaskAddView = (findViewById<TextView>(R.id.noTasksAdd))
-                .apply { setOnClickListener { addNewTaskIntent.post() } }
+                .apply { setOnClickListener { intents.publish(AddNewTask) } }
         }
 
         // Set up floating action button
         requireActivity().findViewById<FloatingActionButton>(R.id.fab_add_task).apply {
             setImageResource(R.drawable.ic_add)
-            setOnClickListener { addNewTaskIntent.post() }
+            setOnClickListener { intents.publish(AddNewTask) }
         }
         setHasOptionsMenu(true)
 
@@ -135,9 +126,9 @@ class TasksFragment : Fragment(), TasksView {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_clear -> clearCompletedTasksIntent.post()
+            R.id.menu_clear -> intents.publish(ClearCompletedTasks)
             R.id.menu_filter -> showFilteringPopUpMenu()
-            R.id.menu_refresh -> refreshTasksIntent.post()
+            R.id.menu_refresh -> intents.publish(RefreshTasks)
         }
         return true
     }
@@ -152,12 +143,14 @@ class TasksFragment : Fragment(), TasksView {
         PopupMenu(context, activity.findViewById(R.id.menu_filter)).apply {
             menuInflater.inflate(R.menu.filter_tasks, menu)
             setOnMenuItemClickListener { item ->
-                filterTasksIntent.post(
-                    when (item.itemId) {
-                        R.id.active -> TasksFilterType.ACTIVE_TASKS
-                        R.id.completed -> TasksFilterType.COMPLETED_TASKS
-                        else -> TasksFilterType.ALL_TASKS
-                    }
+                intents.publish(
+                    FilterTasks(
+                        when (item.itemId) {
+                            R.id.active -> TasksFilterType.ACTIVE_TASKS
+                            R.id.completed -> TasksFilterType.COMPLETED_TASKS
+                            else -> TasksFilterType.ALL_TASKS
+                        }
+                    )
                 )
                 true
             }
