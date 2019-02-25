@@ -26,7 +26,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import wtf.mvi.MviIntent
-import wtf.mvi.subscription.MviBasePresenter
+import wtf.mvi.base.MviBasePresenter
 import kotlin.coroutines.CoroutineContext
 
 /**
